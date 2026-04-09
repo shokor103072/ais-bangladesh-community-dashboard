@@ -16,6 +16,7 @@ create table if not exists public.concerns (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   replies jsonb not null default '[]'::jsonb,
+  internal_notes jsonb not null default '[]'::jsonb,
   timeline jsonb not null default '[]'::jsonb
 );
 

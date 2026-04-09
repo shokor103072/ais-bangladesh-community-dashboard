@@ -77,6 +77,7 @@
       createdAt: row.created_at,
       updatedAt: row.updated_at,
       replies: Array.isArray(row.replies) ? row.replies : [],
+      internalNotes: Array.isArray(row.internal_notes) ? row.internal_notes : [],
       timeline: Array.isArray(row.timeline) ? row.timeline : []
     };
   }
@@ -97,6 +98,7 @@
       created_at: item.createdAt || new Date().toISOString(),
       updated_at: item.updatedAt || new Date().toISOString(),
       replies: Array.isArray(item.replies) ? item.replies : [],
+      internal_notes: Array.isArray(item.internalNotes) ? item.internalNotes : [],
       timeline: Array.isArray(item.timeline) ? item.timeline : []
     };
   }

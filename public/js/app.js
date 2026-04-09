@@ -776,6 +776,9 @@ function concernLatestReply(c) {
   const replies = Array.isArray(c.replies) ? c.replies : [];
   return replies.length ? replies[replies.length - 1] : null;
 }
+function concernInternalNotes(c) {
+  return Array.isArray(c.internalNotes) ? c.internalNotes : [];
+}
 function renderConcernTimeline(c) {
   return (c.timeline || []).map(t => `
     <div class="timeline-item">
@@ -803,6 +806,7 @@ function renderPublicConcernSummary(c) {
 }
 function renderConcernReplyPanel(c) {
   if (!adminMode()) return '';
+  const internalNotes = concernInternalNotes(c);
   return `<div class="card" style="margin-top:12px">
     <div class="section-title"><h3 style="margin:0;font-size:18px">Committee response</h3><span class="chip ${concernStatusTone(c.status)}">${c.status}</span></div>
     <div class="grid grid-2">
@@ -813,6 +817,17 @@ function renderConcernReplyPanel(c) {
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px;flex-wrap:wrap">
       <button class="ghost" type="button" onclick="updateConcernStatus(${c.id})">Update status</button>
       <button class="primary" type="button" onclick="replyConcern(${c.id})">Send reply</button>
+    </div>
+    <div class="internal-notes-card">
+      <div class="section-title"><h3 style="margin:0;font-size:18px">Internal notes</h3><span class="chip">Admin only</span></div>
+      <div class="muted" style="margin-bottom:10px">These notes are private to the committee and are never shown on the public tracking view.</div>
+      <textarea id="concern-note-${c.id}" rows="3" placeholder="Write a private committee note..."></textarea>
+      <div style="display:flex;justify-content:flex-end;margin-top:10px">
+        <button class="ghost" type="button" onclick="saveInternalNote(${c.id})">Save internal note</button>
+      </div>
+      <div class="internal-notes-list">
+        ${internalNotes.length ? internalNotes.slice().reverse().map(n => `<div class="internal-note-item"><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><strong>${n.by}</strong><span class="chip slate">Internal note</span></div><div class="muted">${new Date(n.at).toLocaleString()}</div><div class="internal-note-text">${n.text}</div></div>`).join('') : '<div class="empty-state" style="padding:12px">No internal notes yet.</div>'}
+      </div>
     </div>
   </div>`;
 }
@@ -955,6 +970,21 @@ async function replyConcern(id) {
   showToast('Reply posted');
   renderConcerns();
 }
+async function saveInternalNote(id) {
+  if (!adminMode()) return;
+  const item = concernsData.find(c => c.id === id);
+  if (!item) return;
+  const note = document.getElementById(`concern-note-${id}`)?.value.trim();
+  if (!note) return showToast('Write an internal note first');
+  item.internalNotes = concernInternalNotes(item);
+  item.updatedAt = new Date().toISOString();
+  item.internalNotes.push({ by: currentAdminName(), at: item.updatedAt, text: note });
+  await saveConcernItem(item);
+  if (typeof logAction === 'function') logAction('Internal note saved', `${item.ticket}`);
+  showToast('Internal note saved');
+  renderConcerns();
+}
+
 async function updateConcernStatus(id) {
   if (!adminMode()) return;
   const item = concernsData.find(c => c.id === id);

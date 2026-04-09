@@ -113,3 +113,7 @@ After logging in as admin on the site:
 3. click **Connect secure inbox**
 
 The token is stored only in that browser. It is not embedded in the public site code.
+
+
+## Step 5: Internal notes
+Run `supabase/step5-internal-notes.sql` in Supabase SQL Editor after deploying this package. Internal notes are private to admins and do not appear on the public tracking view.
