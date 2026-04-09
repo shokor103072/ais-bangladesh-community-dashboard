@@ -765,7 +765,42 @@ function openLightbox(url, title) {
 function concernTicket() { return 'AIS-' + Math.random().toString(36).slice(2, 6).toUpperCase() + '-' + Date.now().toString().slice(-4); }
 function concernStatusTone(status) { return ({Open:'red', 'In Review':'yellow', Resolved:'green', Closed:'slate'})[status] || 'blue'; }
 function concernMatchesLookup(c, lookup) { const q = normalize(lookup); return !q || [c.ticket, c.name, c.email, c.title, c.category, c.status].some(v => normalize(v).includes(q)); }
-function renderConcernTimeline(c) { return (c.timeline || []).map(t => `<div class="timeline-item"><div class="timeline-dot"></div><div><strong>${t.by}</strong><div class="muted">${new Date(t.at).toLocaleString()}</div><div>${t.text}</div></div></div>`).join(''); }
+function concernTimelineTone(text='') {
+  const t = String(text || '').toLowerCase();
+  if (t.includes('status changed')) return 'blue';
+  if (t.includes('submitted')) return 'yellow';
+  if (t.includes('thank') || t.includes('review') || t.includes('response') || t.includes('reply')) return 'green';
+  return 'slate';
+}
+function concernLatestReply(c) {
+  const replies = Array.isArray(c.replies) ? c.replies : [];
+  return replies.length ? replies[replies.length - 1] : null;
+}
+function renderConcernTimeline(c) {
+  return (c.timeline || []).map(t => `
+    <div class="timeline-item">
+      <div class="timeline-dot ${concernTimelineTone(t.text)}"></div>
+      <div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><strong>${t.by}</strong><span class="chip ${concernTimelineTone(t.text)}">${String(t.text||'').toLowerCase().includes('status changed') ? 'Status update' : String(t.text||'').toLowerCase().includes('submitted') ? 'Submitted' : 'Committee update'}</span></div>
+        <div class="muted">${new Date(t.at).toLocaleString()}</div>
+        <div>${t.text}</div>
+      </div>
+    </div>`).join('');
+}
+function renderPublicConcernSummary(c) {
+  const reply = concernLatestReply(c);
+  return `<div class="card concern-public-summary">
+    <div class="section-title"><h3 style="margin:0;font-size:18px">Tracking summary</h3><span class="chip ${concernStatusTone(c.status)}">${c.status || 'Open'}</span></div>
+    <div class="grid grid-2">
+      <div class="mini-stat"><div class="mini-label">Assigned to</div><div class="mini-value">${c.assignee || 'Committee inbox'}</div></div>
+      <div class="mini-stat"><div class="mini-label">Last updated</div><div class="mini-value">${new Date(c.updatedAt || c.createdAt).toLocaleString()}</div></div>
+    </div>
+    <div class="public-reply-box ${reply ? 'has-reply' : ''}">
+      <div class="section-kicker">Committee reply</div>
+      ${reply ? `<div class="public-reply-text">${reply.text}</div><div class="muted" style="margin-top:8px">Replied by <strong>${reply.by}</strong> on ${new Date(reply.at).toLocaleString()}</div>` : `<div class="muted">Your concern has been received. The committee has not posted a public reply yet. Please keep your ticket code for future tracking.</div>`}
+    </div>
+  </div>`;
+}
 function renderConcernReplyPanel(c) {
   if (!adminMode()) return '';
   return `<div class="card" style="margin-top:12px">
@@ -827,6 +862,7 @@ function renderConcerns() {
       <div class="card cover-card">
         <div class="section-title"><h2>${adminMode() ? 'Committee inbox' : 'Track your concern'}</h2><span class="chip">Live updates</span></div>
         <div class="muted" style="margin-bottom:10px">${adminMode() ? 'Review, assign, and reply to member concerns from one place.' : 'Use your ticket code or UTP email to view updates from the committee.'}</div>
+        ${!adminMode() ? `<div class="card concern-lookup-help" style="padding:12px;margin-bottom:10px"><div class="section-kicker">What you will see</div><div class="muted">Trackable concerns show the latest status, the committee reply, assigned owner, and the full update timeline.</div></div>` : ''}
         ${adminMode() ? `
         <div class="grid grid-3">
           <div><label>Status</label><select id="concernFilterStatus"><option value="">All</option><option>Open</option><option>In Review</option><option>Resolved</option><option>Closed</option></select></div>
@@ -892,7 +928,7 @@ function renderConcerns() {
             <div class="section-kicker">Timeline</div>
             <div class="timeline">${renderConcernTimeline(c)}</div>
           </div>
-          <div>${renderConcernReplyPanel(c)}${!adminMode() ? `<div class="card" style="padding:12px"><div class="section-kicker">Assigned to</div><strong>${c.assignee || 'Committee inbox'}</strong><div class="muted" style="margin-top:6px">Last updated ${new Date(c.updatedAt || c.createdAt).toLocaleString()}</div></div>` : ''}</div>
+          <div>${renderConcernReplyPanel(c)}${!adminMode() ? renderPublicConcernSummary(c) : ''}</div>
         </div>
       </div>`).join('') : `<div class="card empty-state">${adminMode() ? 'No concerns match the current filter yet.' : 'No trackable concerns found yet. Submit one above or search using your ticket and UTP email.'}</div>`;
   };
