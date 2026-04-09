@@ -1,3 +1,5 @@
+const { sendResendEmail, memberUpdateEmail } = require('./_email');
+
 const REQUIRED = ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'ADMIN_INBOX_TOKEN'];
 
 function json(res, status, body) {
@@ -50,6 +52,17 @@ module.exports = async (req, res) => {
     if (req.method === 'POST' || req.method === 'PUT') {
       const body = await readBody(req);
       const concern = body.concern || body;
+
+      let previous = null;
+      try {
+        const prevRsp = await fetch(`${base}?id=eq.${encodeURIComponent(concern.id)}&select=*`, { headers: supabaseHeaders() });
+        const prevTxt = await prevRsp.text();
+        if (prevRsp.ok) {
+          const prevParsed = JSON.parse(prevTxt || '[]');
+          previous = Array.isArray(prevParsed) && prevParsed.length ? prevParsed[0] : null;
+        }
+      } catch {}
+
       const rsp = await fetch(`${base}?on_conflict=id`, {
         method: 'POST',
         headers: supabaseHeaders({ 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates,return=representation' }),
@@ -58,7 +71,30 @@ module.exports = async (req, res) => {
       const txt = await rsp.text();
       if (!rsp.ok) return json(res, rsp.status, { ok: false, error: txt });
       const parsed = JSON.parse(txt || '[]');
-      return json(res, 200, { ok: true, item: Array.isArray(parsed) ? parsed[0] : parsed });
+      const item = Array.isArray(parsed) ? parsed[0] : parsed;
+
+      const emailErrors = [];
+      try {
+        const prevReplies = Array.isArray(previous?.replies) ? previous.replies : [];
+        const nextReplies = Array.isArray(item?.replies) ? item.replies : [];
+        const latestReply = nextReplies.length > prevReplies.length ? nextReplies[nextReplies.length - 1] : null;
+        const statusChanged = previous && previous.status !== item.status;
+        if ((latestReply || statusChanged) && item?.email) {
+          const mail = memberUpdateEmail({
+            ticket: item.ticket,
+            name: item.name,
+            email: item.email,
+            title: item.title,
+            status: item.status,
+            assignee: item.assignee
+          }, { latestReply, statusChanged });
+          await sendResendEmail({ to: item.email, ...mail });
+        }
+      } catch (err) {
+        emailErrors.push(`member-update:${err.message || err}`);
+      }
+
+      return json(res, 200, { ok: true, item, emailErrors });
     }
 
     return json(res, 405, { ok: false, error: 'Method not allowed' });

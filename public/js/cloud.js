@@ -179,6 +179,23 @@
       .subscribe();
   }
 
+
+  window.submitConcernToServer = async function (item) {
+    const rsp = await fetch('/api/concern-submit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ concern: toConcernRow(item) })
+    });
+    if (rsp.status === 404) {
+      return window.saveConcernToCloud(item);
+    }
+    const data = await rsp.json().catch(() => ({}));
+    if (!rsp.ok || data.ok === false) throw new Error(data.error || 'Concern submit API failed');
+    const saved = data.item ? mapConcernRow(data.item) : item;
+    if (typeof refreshConcernsFromCloud === 'function') setTimeout(() => refreshConcernsFromCloud(true), 150);
+    return saved;
+  };
+
   window.loadConcernsFromCloud = async function () {
     if (!state.ready) return null;
     const isAdminView = typeof adminMode === 'function' && adminMode();

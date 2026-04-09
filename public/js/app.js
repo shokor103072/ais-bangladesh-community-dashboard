@@ -908,7 +908,17 @@ function renderConcerns() {
       message: f.message.value.trim(), status: 'Open', assignee: '', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
       replies: [], timeline: [{ by: f.name.value.trim(), at: new Date().toISOString(), text: 'Concern submitted.' }]
     };
-    await saveConcernItem(item);
+    if (typeof window.submitConcernToServer === 'function') {
+      try {
+        const saved = await window.submitConcernToServer(item);
+        await saveConcernItem(saved || item, { skipCloud: true });
+      } catch (err) {
+        console.warn('Server submission route failed, falling back to direct save:', err);
+        await saveConcernItem(item);
+      }
+    } else {
+      await saveConcernItem(item);
+    }
     if (typeof logAction === 'function') logAction('Concern submitted', `${item.ticket} • ${item.title}`);
     f.reset();
     showToast(`Concern submitted. Your ticket is ${item.ticket}`);

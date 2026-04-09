@@ -1,119 +1,70 @@
-# AIS Bangladesh Chapter, UTP Dashboard — Vercel + Supabase Step 2
+# AIS Bangladesh Chapter, UTP Dashboard — Step 6 Email Notifications
 
-This package is prepared for **Vercel deployment** and now includes a **Supabase-ready cloud layer for the concern desk**.
+This package adds **email notifications** to the concern desk while keeping the current Vercel + Supabase structure.
 
-## What this step adds
-- Keeps the dashboard deployable on **Vercel**.
-- Adds **Supabase client integration** for shared concern submissions.
-- Adds **live cloud sync badge** so you can see whether the app is using browser mode or Supabase mode.
-- Adds **realtime refresh** for concerns when Supabase is connected.
-- Adds `supabase/schema.sql` for database setup.
-- Adds `public/js/supabase-config.js` and `public/js/supabase-config.example.js`.
-- Keeps automatic fallback to **localStorage** if Supabase is not configured yet.
+## What Step 6 adds
+- Sends a **confirmation email** to the member when a concern is submitted.
+- Optionally sends a **committee alert email** for each new concern.
+- Sends a **member update email** when the committee posts a reply or changes status.
+- Keeps internal notes private and does **not** email them.
+- Public tracking and secure admin inbox continue to work as before.
 
-## What is already cloud-enabled
-### Shared across devices when Supabase is configured
-- concern submission
-- concern lookup by ticket / email
-- realtime refresh of the concern list
+## New files in this step
+- `api/_email.js`
+- `api/concern-submit.js`
 
-### Still local browser mode for now
-- admin login session
-- admin account management
-- admin audit logs
-- members / events / gallery / announcements / achievements
-
-That split is intentional. Moving admin credentials into client-side Supabase access too early would weaken security. The safer next step is to move admin authentication and private concern management into **secure Vercel API routes**.
-
-## Files added in this step
+## Updated files in this step
+- `api/admin-concerns.js`
+- `public/js/app.js`
 - `public/js/cloud.js`
-- `public/js/supabase-config.js`
-- `public/js/supabase-config.example.js`
-- `supabase/schema.sql`
 
-## Setup Supabase
-1. Create a new Supabase project.
-2. Open the SQL Editor in Supabase.
-3. Run the SQL from `supabase/schema.sql`.
-4. Open `public/js/supabase-config.js`.
-5. Set:
-   - `enabled: true`
-   - your project URL
-   - your anon key
-6. Redeploy to Vercel.
+## Vercel environment variables for Step 6
+Add these in **Vercel → Project Settings → Environment Variables**:
 
-## Security note about private concerns
-The supplied SQL is conservative by default:
-- anyone can **submit** a concern
-- public users can only **read trackable** concerns
-- full admin inbox sync is **not opened by default**
+### Required for email sending
+- `RESEND_API_KEY`
+- `EMAIL_FROM`
 
-Inside `supabase/schema.sql` you will see commented policies for broader admin-style read/update access. Those are kept commented because they are not ideal for production security when using only a browser anon key.
+### Optional but recommended
+- `COMMITTEE_NOTIFY_TO`
 
-## Current deployment flow
-1. Push this project to GitHub.
-2. Import the repo into Vercel.
-3. Framework preset: **Other**.
-4. No build command is required.
-5. Deploy.
+### Existing variables you should already have
+- `SUPABASE_URL`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `ADMIN_INBOX_TOKEN`
 
-## Health check
-After deploy, open:
-- `/api/health`
+## Example values
+- `EMAIL_FROM` = `AIS Bangladesh Desk <onboarding@resend.dev>` for testing
+- `COMMITTEE_NOTIFY_TO` = `your-email@example.com`
 
-## Temporary admin access
-Temporary master account:
-- Username: `masteradmin`
-- Password: `UTP-Admin-2026!`
+## Important note about Resend testing
+If you use Resend testing mode or an unverified domain, sending may be limited. For real recipient delivery, verify a sending domain in Resend and use that domain in `EMAIL_FROM`.
 
-Change the password immediately after first login.
+## How Step 6 works
+### Public submission
+The site now tries to submit through `/api/concern-submit` first.
+That route:
+1. saves the concern in Supabase using the server key
+2. sends the confirmation email to the member
+3. sends the optional committee notification email
 
-## Best next upgrade after this package
-### Step 3
-Move **admin authentication and private concern management** into secure Vercel API routes.
+If that route is unavailable, the site falls back to the existing direct Supabase submission.
 
-That next step should include:
-- server-side admin login
-- secure password verification on the server
-- protected admin concern inbox
-- protected admin logs
-- role-based permissions for master admin and committee admins
+### Admin reply and status update
+When admins update a concern through the secure admin inbox:
+- a new committee reply triggers a member email
+- a status change triggers a member email
 
-### Step 4
-Move the rest of the editable dashboard data to Supabase:
-- members
-- committee
-- alumni
-- events
-- announcements
-- achievements
-- gallery
+## Deployment steps
+1. Replace your GitHub repo files with this package.
+2. Add the new Vercel environment variables.
+3. Redeploy on Vercel.
+4. Hard refresh the website.
+5. Test with a new concern submission.
 
-
-## Step 3: Secure admin concern inbox via Vercel API
-
-This package adds a protected admin inbox path:
-- public users still submit concerns directly with the Supabase publishable key
-- admin full inbox read/update now goes through `/api/admin-concerns`
-- Vercel stores the sensitive keys in environment variables
-
-### Vercel environment variables
-Add these in Vercel Project Settings → Environment Variables:
-- `SUPABASE_URL` = your project URL
-- `SUPABASE_SERVICE_ROLE_KEY` = your Supabase service role key
-- `ADMIN_INBOX_TOKEN` = any long secret string you choose
-
-### One-time SQL cleanup
-If you previously enabled broad admin select/update RLS policies for testing, run `supabase/step3-lockdown.sql` in Supabase.
-
-### Admin browser setup
-After logging in as admin on the site:
-1. open **Manage**
-2. paste the same `ADMIN_INBOX_TOKEN`
-3. click **Connect secure inbox**
-
-The token is stored only in that browser. It is not embedded in the public site code.
-
-
-## Step 5: Internal notes
-Run `supabase/step5-internal-notes.sql` in Supabase SQL Editor after deploying this package. Internal notes are private to admins and do not appear on the public tracking view.
+## Suggested first test
+1. Submit a concern using your own email.
+2. Confirm the row is saved in Supabase.
+3. Check for the confirmation email.
+4. Reply from admin.
+5. Check for the update email.
