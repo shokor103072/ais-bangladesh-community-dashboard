@@ -59,6 +59,66 @@ async function saveConcernItem(item, options = {}) {
   }
   return item;
 }
+
+function persistMembersLocal() { store.set('utp_members', membersData); }
+function persistEventsLocal() { store.set('utp_events', eventsData); }
+function persistGalleryLocal() { store.set('utp_gallery', galleryData); }
+
+window.getCloudContentSnapshot = function () {
+  return {
+    members: Array.isArray(membersData) ? membersData : [],
+    events: Array.isArray(eventsData) ? eventsData : [],
+    gallery: Array.isArray(galleryData) ? galleryData : []
+  };
+};
+
+window.applyCloudContentSnapshot = function (payload = {}, forceRender = true) {
+  if (Array.isArray(payload.members)) { membersData = payload.members; persistMembersLocal(); }
+  if (Array.isArray(payload.events)) { eventsData = payload.events; persistEventsLocal(); }
+  if (Array.isArray(payload.gallery)) { galleryData = payload.gallery; persistGalleryLocal(); }
+  if (forceRender) {
+    renderHome();
+    renderMembers();
+    renderEvents();
+    renderGallery();
+    renderOnboarding();
+  }
+};
+
+async function refreshDirectoryMediaFromCloud(forceRender = true) {
+  try {
+    if (typeof window.loadMembersFromCloud === 'function') {
+      const cloudMembers = await window.loadMembersFromCloud();
+      if (Array.isArray(cloudMembers) && (cloudMembers.length || !membersData.length)) {
+        membersData = cloudMembers;
+        persistMembersLocal();
+      }
+    }
+    if (typeof window.loadEventsFromCloud === 'function') {
+      const cloudEvents = await window.loadEventsFromCloud();
+      if (Array.isArray(cloudEvents) && (cloudEvents.length || !eventsData.length)) {
+        eventsData = cloudEvents;
+        persistEventsLocal();
+      }
+    }
+    if (typeof window.loadGalleryFromCloud === 'function') {
+      const cloudGallery = await window.loadGalleryFromCloud();
+      if (Array.isArray(cloudGallery) && (cloudGallery.length || !galleryData.length)) {
+        galleryData = cloudGallery;
+        persistGalleryLocal();
+      }
+    }
+    if (forceRender) {
+      renderHome();
+      renderMembers();
+      renderEvents();
+      renderGallery();
+      renderOnboarding();
+    }
+  } catch (err) {
+    console.warn('Cloud content refresh failed:', err);
+  }
+}
 const intakeMonths = ['January', 'May', 'September'];
 const livingPlaces = ['Inside UTP', 'Pangsapuri', 'SIBC', 'Bandar U', 'Tasik Putra', 'Tronoh', 'KG Bali', 'Soho', 'IFS Soho', 'Ipoh'];
 const defaultPublicVisibility = { email: true, phone: true, birthday: true, intake: true, place: true, social: true };
@@ -616,13 +676,21 @@ function renderEvents() {
   });
 }
 
-document.getElementById('formEvent').addEventListener('submit', e => {
+document.getElementById('formEvent').addEventListener('submit', async e => {
   e.preventDefault();
   if (!adminMode()) return;
   const f = e.target;
   const obj = { id: Date.now(), title: f.title.value.trim(), date: f.date.value, time: f.time.value, venue: f.venue.value, description: f.description.value, image: f.image.value, rsvp: 0 };
   eventsData.push(obj);
-  store.set('utp_events', eventsData);
+  persistEventsLocal();
+  if (typeof window.saveEventToCloud === 'function') {
+    try {
+      const saved = await window.saveEventToCloud(obj);
+      const idx = eventsData.findIndex(x => Number(x.id) === Number(obj.id));
+      if (saved && idx >= 0) eventsData[idx] = saved;
+      persistEventsLocal();
+    } catch (err) { console.warn('Cloud event save failed:', err); }
+  }
   closeModal('modalEvent');
   renderEvents();
   renderHome();
@@ -742,13 +810,21 @@ function renderGallery() {
   draw();
 }
 
-document.getElementById('formPhoto').addEventListener('submit', e => {
+document.getElementById('formPhoto').addEventListener('submit', async e => {
   e.preventDefault();
   if (!adminMode()) return;
   const f = e.target;
   const obj = { id: Date.now(), title: f.title.value, date: f.date.value, category: f.category.value, url: f.url.value };
   galleryData.unshift(obj);
-  store.set('utp_gallery', galleryData);
+  persistGalleryLocal();
+  if (typeof window.saveGalleryItemToCloud === 'function') {
+    try {
+      const saved = await window.saveGalleryItemToCloud(obj);
+      const idx = galleryData.findIndex(x => Number(x.id) === Number(obj.id));
+      if (saved && idx >= 0) galleryData[idx] = saved;
+      persistGalleryLocal();
+    } catch (err) { console.warn('Cloud gallery save failed:', err); }
+  }
   closeModal('modalPhoto');
   renderGallery();
   f.reset();
@@ -1085,7 +1161,7 @@ function renderOnboarding() {
     buddyBox.innerHTML = buds.length ? `<div class="muted" style="margin-bottom:6px">Suggested buddies in ${dept}:</div>` + buds.map(b => `
       <div class="person" style="margin-bottom:6px"><img class="avatar" src="${avatarOf(b.photo)}"><div><div><strong>${b.name}</strong></div><div class="muted">${b.category}</div></div></div>`).join('') : `<div class="muted">No buddies found yet.</div>`;
   });
-  if (form) form.addEventListener('submit', e => {
+  if (form) form.addEventListener('submit', async e => {
     e.preventDefault();
     if (!adminMode()) return showToast('Only admin can add new members');
     const f = e.target;
@@ -1096,7 +1172,15 @@ function renderOnboarding() {
     }
     const obj = { id: Date.now(), name: f.name.value.trim(), category: f.category.value, department: f.department.value, birthday: f.birthday.value || '', phone: f.phone.value, email: f.email.value.trim(), photo: f.photo.value || 'https://i.pravatar.cc/200', intakeMonth: f.intakeMonth.value, intakeYear: f.intakeYear.value, place: f.place.value, graduateYear: parseInt(f.graduateYear.value) || null, facebook: f.facebook.value.trim(), instagram: f.instagram.value.trim(), whatsapp: f.whatsapp.value.trim(), linkedin: f.linkedin.value.trim() };
     membersData.unshift(obj);
-    store.set('utp_members', membersData);
+    persistMembersLocal();
+    if (typeof window.saveMemberToCloud === 'function') {
+      try {
+        const saved = await window.saveMemberToCloud(obj);
+        const idx = membersData.findIndex(x => Number(x.id) === Number(obj.id));
+        if (saved && idx >= 0) membersData[idx] = saved;
+        persistMembersLocal();
+      } catch (err) { console.warn('Cloud member save failed:', err); }
+    }
     f.reset();
     buddyBox.innerHTML = `<div class="chip green">Added ${obj.name} to directory ✓</div>`;
     renderMembers();
@@ -1151,6 +1235,6 @@ renderConcerns();
 renderOnboarding();
 renderEmergency();
 showPage('home');
-
+refreshDirectoryMediaFromCloud(false);
 
 document.getElementById('footerYear') && (document.getElementById('footerYear').textContent = new Date().getFullYear());

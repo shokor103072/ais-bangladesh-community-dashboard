@@ -371,7 +371,7 @@ function openEditMember(id) {
   openModal('modalEditMember');
 }
 
-document.getElementById('formEditMember').addEventListener('submit', e => {
+document.getElementById('formEditMember').addEventListener('submit', async e => {
   e.preventDefault();
   const f = e.target;
   const formId = Number(f.querySelector('#editMemberId').value || editingMemberId);
@@ -401,27 +401,41 @@ document.getElementById('formEditMember').addEventListener('submit', e => {
   membersData[idx] = updatedMember;
   editingMemberId = formId;
   store.set('utp_members', membersData);
+  if (typeof window.saveMemberToCloud === 'function') {
+    try {
+      const saved = await window.saveMemberToCloud(updatedMember);
+      if (saved) membersData[idx] = saved;
+      store.set('utp_members', membersData);
+    } catch (err) { console.warn('Cloud member update failed:', err); }
+  }
   closeModal('modalEditMember');
   showToast('Member updated');
   reRenderAll();
 });
 
-function deleteMember() {
+async function deleteMember() {
   if (!isAdmin || !editingMemberId) return;
   const m = membersData.find(x => x.id === editingMemberId);
   if (!confirm(`Delete "${m?.name}"? This cannot be undone.`)) return;
+  const deleteId = editingMemberId;
   membersData = membersData.filter(x => x.id !== editingMemberId);
   store.set('utp_members', membersData);
+  if (typeof window.deleteMemberFromCloud === 'function') {
+    try { await window.deleteMemberFromCloud(deleteId); } catch (err) { console.warn('Cloud member delete failed:', err); }
+  }
   closeModal('modalEditMember');
   showToast('Member deleted');
   reRenderAll();
 }
-function confirmDeleteMember(id) {
+async function confirmDeleteMember(id) {
   if (!isAdmin) return;
   const m = membersData.find(x => x.id === id);
   if (!confirm(`Delete "${m?.name}"?`)) return;
   membersData = membersData.filter(x => x.id !== id);
   store.set('utp_members', membersData);
+  if (typeof window.deleteMemberFromCloud === 'function') {
+    try { await window.deleteMemberFromCloud(id); } catch (err) { console.warn('Cloud member delete failed:', err); }
+  }
   showToast('Member deleted');
   reRenderAll();
 }
@@ -443,7 +457,7 @@ function openEditEvent(id) {
   openModal('modalEditEvent');
 }
 
-document.getElementById('formEditEvent').addEventListener('submit', e => {
+document.getElementById('formEditEvent').addEventListener('submit', async e => {
   e.preventDefault();
   if (!isAdmin || !editingEventId) return;
   const idx = eventsData.findIndex(x => x.id === editingEventId);
@@ -458,24 +472,38 @@ document.getElementById('formEditEvent').addEventListener('submit', e => {
     image: f.image.value.trim()
   });
   store.set('utp_events', eventsData);
+  if (typeof window.saveEventToCloud === 'function') {
+    try {
+      const saved = await window.saveEventToCloud(eventsData[idx]);
+      if (saved) eventsData[idx] = saved;
+      store.set('utp_events', eventsData);
+    } catch (err) { console.warn('Cloud event update failed:', err); }
+  }
   closeModal('modalEditEvent');
   showToast('Event updated');
   reRenderAll();
 });
-function deleteEvent() {
+async function deleteEvent() {
   if (!isAdmin || !editingEventId) return;
   if (!confirm('Delete this event?')) return;
+  const deleteId = editingEventId;
   eventsData = eventsData.filter(x => x.id !== editingEventId);
   store.set('utp_events', eventsData);
+  if (typeof window.deleteEventFromCloud === 'function') {
+    try { await window.deleteEventFromCloud(deleteId); } catch (err) { console.warn('Cloud event delete failed:', err); }
+  }
   closeModal('modalEditEvent');
   showToast('Event deleted');
   reRenderAll();
 }
-function confirmDeleteEvent(id) {
+async function confirmDeleteEvent(id) {
   if (!isAdmin) return;
   if (!confirm('Delete this event?')) return;
   eventsData = eventsData.filter(x => x.id !== id);
   store.set('utp_events', eventsData);
+  if (typeof window.deleteEventFromCloud === 'function') {
+    try { await window.deleteEventFromCloud(id); } catch (err) { console.warn('Cloud event delete failed:', err); }
+  }
   showToast('Event deleted');
   reRenderAll();
 }
@@ -697,7 +725,7 @@ function openEditPhoto(id) {
   openModal('modalEditPhoto');
 }
 
-document.getElementById('formEditPhoto').addEventListener('submit', e => {
+document.getElementById('formEditPhoto').addEventListener('submit', async e => {
   e.preventDefault();
   if (!isAdmin || !editingPhotoId) return;
   const idx = galleryData.findIndex(x => x.id === editingPhotoId);
@@ -710,24 +738,38 @@ document.getElementById('formEditPhoto').addEventListener('submit', e => {
     url: f.url.value.trim()
   });
   store.set('utp_gallery', galleryData);
+  if (typeof window.saveGalleryItemToCloud === 'function') {
+    try {
+      const saved = await window.saveGalleryItemToCloud(galleryData[idx]);
+      if (saved) galleryData[idx] = saved;
+      store.set('utp_gallery', galleryData);
+    } catch (err) { console.warn('Cloud gallery update failed:', err); }
+  }
   closeModal('modalEditPhoto');
   showToast('Photo updated');
   reRenderAll();
 });
-function deletePhotoEdit() {
+async function deletePhotoEdit() {
   if (!isAdmin || !editingPhotoId) return;
   if (!confirm('Delete this photo?')) return;
+  const deleteId = editingPhotoId;
   galleryData = galleryData.filter(x => x.id !== editingPhotoId);
   store.set('utp_gallery', galleryData);
+  if (typeof window.deleteGalleryItemFromCloud === 'function') {
+    try { await window.deleteGalleryItemFromCloud(deleteId); } catch (err) { console.warn('Cloud gallery delete failed:', err); }
+  }
   closeModal('modalEditPhoto');
   showToast('Photo deleted');
   reRenderAll();
 }
-function confirmDeletePhoto(id) {
+async function confirmDeletePhoto(id) {
   if (!isAdmin) return;
   if (!confirm('Delete this photo?')) return;
   galleryData = galleryData.filter(x => x.id !== id);
   store.set('utp_gallery', galleryData);
+  if (typeof window.deleteGalleryItemFromCloud === 'function') {
+    try { await window.deleteGalleryItemFromCloud(id); } catch (err) { console.warn('Cloud gallery delete failed:', err); }
+  }
   showToast('Photo deleted');
   reRenderAll();
 }
