@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="theme-color" content="#0f172a">
+<meta name="description" content="AIS Bangladesh Chapter, UTP dashboard for members, committee, alumni, events, achievements, gallery, onboarding, and emergency resources.">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AIS Bangladesh Chapter UTP – Dashboard</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body class="view-auto">
+<div id="app">
+  <header>
+    <div class="header-inner">
+      <div class="brand">
+        <div class="logo">BD</div>
+        <div>
+          <h1>AIS Bangladesh Chapter, UTP</h1>
+          <p>AI Society • Universiti Teknologi PETRONAS</p>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <button id="adminToggleBtn" class="ghost" style="font-size:12px;padding:6px 10px" onclick="toggleAdminPanel()">🔒 Admin</button>
+        <button id="adminSettingsBtn" class="ghost admin-only" style="font-size:12px;padding:6px 10px;display:none" onclick="openModal('modalAdminSettings')">⚙️ Manage</button>
+        <div class="view-switcher" role="tablist" aria-label="View mode">
+          <button data-mode="auto" class="active" title="Responsive auto">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+            Auto
+          </button>
+          <button data-mode="desktop" title="Force desktop layout">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8"/></svg>
+            Desktop
+          </button>
+          <button data-mode="mobile" title="Preview how it looks on phone">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/></svg>
+            Mobile
+          </button>
+        </div>
+      </div>
+    </div>
+    <nav class="top-nav" id="topNav">
+      <button data-page="home" class="active">Home</button>
+      <button data-page="members">Members</button>
+      <button data-page="committee">Committee</button>
+      <button data-page="alumni">Alumni</button>
+      <button data-page="events">Events</button>
+      <button data-page="achievements">Achievements</button>
+      <button data-page="gallery">Gallery</button>
+      <button data-page="concerns">Concerns</button>
+      <button data-page="onboarding">Onboarding</button>
+      <button data-page="emergency">Emergency</button>
+    </nav>
+  </header>
+
+  <main>
+    <section id="page-home" class="page active"></section>
+    <section id="page-members" class="page"></section>
+    <section id="page-committee" class="page"></section>
+    <section id="page-alumni" class="page"></section>
+    <section id="page-events" class="page"></section>
+    <section id="page-achievements" class="page"></section>
+    <section id="page-gallery" class="page"></section>
+    <section id="page-concerns" class="page"></section>
+    <section id="page-onboarding" class="page"></section>
+    <section id="page-emergency" class="page"></section>
+  </main>
+
+  <nav class="bottom-nav" id="bottomNav" aria-label="Primary">
+    <button data-page="home" class="active"><span class="ico">🏠</span><small>Home</small></button>
+    <button data-page="members"><span class="ico">👥</span><small>Members</small></button>
+    <button data-page="committee"><span class="ico">🤝</span><small>Committee</small></button>
+    <button data-page="alumni"><span class="ico">🎓</span><small>Alumni</small></button>
+    <button data-page="events"><span class="ico">📅</span><small>Events</small></button>
+    <button data-page="achievements"><span class="ico">🏆</span><small>Achieve</small></button>
+    <button data-page="gallery"><span class="ico">🖼️</span><small>Gallery</small></button>
+    <button data-page="concerns"><span class="ico">💬</span><small>Concerns</small></button>
+    <button data-page="onboarding"><span class="ico">✅</span><small>Onboard</small></button>
+    <button data-page="emergency"><span class="ico">🚨</span><small>Help</small></button>
+  </nav>
+  <footer class="site-footer">© <span id="footerYear"></span> AIS Bangladesh Chapter, UTP. Developed by Md Shokor A Rahaman.</footer>
+</div>
+
+<div id="viewBadge">Viewing: Auto</div>
+
+<!-- Admin Login Modal -->
+<div class="modal" id="modalAdminLogin">
+  <div class="modal-card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <h3 style="margin:0">🔐 Admin Login</h3>
+      <button class="ghost" onclick="closeModal('modalAdminLogin')">Close</button>
+    </div>
+    <form id="formAdminLogin">
+      <label>Username</label>
+      <input type="text" required name="username" id="adminUsernameInput" placeholder="Enter admin username">
+      <label>Password</label>
+      <input type="password" required name="password" id="adminPwdInput" placeholder="Enter password">
+      <div class="muted" style="margin-top:4px">Authorized committee administrators only. For security, credentials are no longer displayed in the interface.</div>
+      <div id="adminLoginError" style="color:var(--red);font-size:13px;margin-top:6px;display:none">Incorrect password.</div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
+        <button type="button" class="ghost" onclick="closeModal('modalAdminLogin')">Cancel</button>
+        <button class="primary" type="submit">Login</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Admin Settings Modal -->
+<div class="modal" id="modalAdminSettings">
+  <div class="modal-card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <h3 style="margin:0">⚙️ Admin Settings</h3>
+      <button class="ghost" onclick="closeModal('modalAdminSettings')">Close</button>
+    </div>
+    <form id="formChangePassword">
+      <label>New Password</label>
+      <input type="password" required name="newpwd" minlength="4" placeholder="Enter new password">
+      <label>Confirm Password</label>
+      <input type="password" required name="confirmpwd" minlength="4" placeholder="Confirm new password">
+      <div id="pwdChangeMsg" style="font-size:13px;margin-top:6px;display:none"></div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
+        <button class="primary" type="submit">Update Password</button>
+      </div>
+    </form>
+    <hr style="margin:16px 0;border:none;border-top:1px solid #e2e8f0">
+    <h4 style="margin:0 0 8px">Community Visibility & Quick Links</h4>
+    <form id="formCommunityVisibility">
+      <div class="grid grid-2">
+        <label><input type="checkbox" id="visEmail" style="width:auto"> Show email publicly</label>
+        <label><input type="checkbox" id="visPhone" style="width:auto"> Show phone publicly</label>
+        <label><input type="checkbox" id="visBirthday" style="width:auto"> Show birthday publicly</label>
+        <label><input type="checkbox" id="visIntake" style="width:auto"> Show intake publicly</label>
+        <label><input type="checkbox" id="visPlace" style="width:auto"> Show place publicly</label>
+        <label><input type="checkbox" id="visSocial" style="width:auto"> Show social links publicly</label>
+      </div>
+      <label>Community WhatsApp link</label><input id="communityWhatsapp" placeholder="https://wa.me/...">
+      <label>Community Facebook link</label><input id="communityFacebook" placeholder="https://facebook.com/...">
+      <label>Community Instagram link</label><input id="communityInstagram" placeholder="https://instagram.com/...">
+      <label>Onboarding checklist (6 lines)</label><textarea id="onboardStepsEditor" rows="6" placeholder="One checklist item per line"></textarea>
+      <label>FAQ editor</label><textarea id="faqEditor" rows="6" placeholder="Question | Answer"></textarea>
+      <div style="display:flex;justify-content:flex-end;margin-top:12px"><button class="primary" type="submit">Save visibility & content</button></div>
+    </form>
+    <hr style="margin:16px 0;border:none;border-top:1px solid #e2e8f0">
+    <hr style="margin:16px 0;border:none;border-top:1px solid #e2e8f0">
+    <div id="masterAdminSections" style="display:none">
+      <h4 style="margin:0 0 8px">Master Admin Controls</h4>
+      <div class="grid grid-2">
+        <div class="card" style="padding:14px">
+          <div class="section-title"><h3 style="margin:0;font-size:18px">Committee Admin Accounts</h3><button class="ghost" type="button" onclick="addAdminAccount()">+ Add account</button></div>
+          <div id="adminAccountsList" class="stack-list"></div>
+        </div>
+        <div class="card" style="padding:14px">
+          <div class="section-title"><h3 style="margin:0;font-size:18px">Audit Logs</h3><button class="ghost" type="button" onclick="clearAdminLogs()">Clear logs</button></div>
+          <div id="adminLogsList" class="stack-list"></div>
+        </div>
+      </div>
+    </div>
+    <h4 style="margin:16px 0 8px">Data Management</h4>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="ghost" onclick="exportAllData()">📥 Export All Data (JSON)</button>
+      <label class="ghost" style="cursor:pointer;display:inline-flex;align-items:center;padding:10px 14px;border-radius:10px;font-weight:600;background:#eef2f7">
+        📤 Import Data (JSON)
+        <input type="file" accept=".json" id="importDataFile" style="display:none" onchange="importAllData(event)">
+      </label>
+      <button class="ghost" style="color:var(--red)" onclick="resetAllData()">🗑️ Reset to Defaults</button>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Member Modal -->
+<div class="modal" id="modalEditMember">
+  <div class="modal-card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <h3 style="margin:0">Edit Member</h3>
+      <button class="ghost" onclick="closeModal('modalEditMember')">Close</button>
+    </div>
+    <form id="formEditMember">
+      <input type="hidden" name="id" id="editMemberId">
+      <label>Name</label><input required name="name" id="editMemberName">
+      <div class="grid grid-2">
+        <div><label>Category</label><select name="category" id="editMemberCategory"><option>Foundation</option><option>Undergraduate</option><option>Msc</option><option>PhD</option><option>Lecturer</option><option>Staff (Research Scientist/Post Doctoral)</option></select></div>
+        <div><label>Department</label><input required name="department" id="editMemberDept"></div>
+      </div>
+      <div class="grid grid-2">
+        <div><label>Birthday</label><input type="date" name="birthday" id="editMemberBday"></div>
+        <div><label>Phone</label><input name="phone" id="editMemberPhone"></div>
+      </div>
+      <div class="grid grid-2">
+        <div><label>Intake Month</label><select name="intakeMonth" id="editMemberIntakeMonth"><option value="">Select month</option><option>January</option><option>May</option><option>September</option></select></div>
+        <div><label>Intake Year</label><input type="number" name="intakeYear" id="editMemberIntakeYear" placeholder="2026"></div>
+      </div>
+      <div class="grid grid-2">
+        <div><label>Place of Living</label><select name="place" id="editMemberPlace"><option value="">Select place</option><option>Inside UTP</option><option>Pangsapuri</option><option>SIBC</option><option>Bandar U</option><option>Tasik Putra</option><option>Tronoh</option><option>KG Bali</option><option>Soho</option><option>IFS Soho</option><option>Ipoh</option></select></div>
+        <div><label>Graduate Year</label><input type="number" name="graduateYear" id="editMemberGradYear"></div>
+      </div>
+      <label>Email</label><input type="email" name="email" id="editMemberEmail">
+      <label>Photo URL</label><input name="photo" id="editMemberPhoto">
+      <div class="grid grid-2">
+        <div><label>Facebook</label><input name="facebook" id="editMemberFacebook" placeholder="https://facebook.com/..."></div>
+        <div><label>Instagram</label><input name="instagram" id="editMemberInstagram" placeholder="https://instagram.com/..."></div>
+      </div>
+      <div class="grid grid-2">
+        <div><label>WhatsApp</label><input name="whatsapp" id="editMemberWhatsapp" placeholder="https://wa.me/..."></div>
+        <div><label>LinkedIn</label><input name="linkedin" id="editMemberLinkedin" placeholder="https://linkedin.com/in/..."></div>
+      </div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
+        <button type="button" class="ghost" style="color:var(--red)" onclick="deleteMember()">Delete</button>
+        <button type="button" class="ghost" onclick="closeModal('modalEditMember')">Cancel</button>
+        <button class="primary" type="submit">Save Changes</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Edit Event Modal -->
+<div class="modal" id="modalEditEvent">
+  <div class="modal-card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <h3 style="margin:0">Edit Event</h3>
+      <button class="ghost" onclick="closeModal('modalEditEvent')">Close</button>
+    </div>
+    <form id="formEditEvent">
+      <input type="hidden" name="id" id="editEventId">
+      <label>Title</label><input required name="title" id="editEventTitle">
+      <div class="grid grid-2">
+        <div><label>Date</label><input required type="date" name="date" id="editEventDate"></div>
+        <div><label>Time</label><input required type="time" name="time" id="editEventTime"></div>
+      </div>
+      <label>Venue</label><input required name="venue" id="editEventVenue">
+      <label>Description</label><textarea name="description" rows="3" id="editEventDesc"></textarea>
+      <label>Image URL</label><input name="image" id="editEventImage">
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
+        <button type="button" class="ghost" style="color:var(--red)" onclick="deleteEvent()">Delete</button>
+        <button type="button" class="ghost" onclick="closeModal('modalEditEvent')">Cancel</button>
+        <button class="primary" type="submit">Save Changes</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Existing Modals -->
+<div class="modal" id="modalEvent">
+  <div class="modal-card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <h3 style="margin:0">Add Event</h3>
+      <button class="ghost" onclick="closeModal('modalEvent')">Close</button>
+    </div>
+    <form id="formEvent">
+      <label>Title</label><input required name="title">
+      <div class="grid grid-2">
+        <div><label>Date</label><input required type="date" name="date"></div>
+        <div><label>Time</label><input required type="time" name="time"></div>
+      </div>
+      <label>Venue</label><input required name="venue">
+      <label>Description</label><textarea name="description" rows="3"></textarea>
+      <label>Image URL (optional)</label><input name="image" placeholder="https://...">
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
+        <button type="button" class="ghost" onclick="closeModal('modalEvent')">Cancel</button>
+        <button class="primary" type="submit">Save Event</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="modal" id="modalAnnounce">
+  <div class="modal-card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <h3 style="margin:0">Add Announcement</h3>
+      <button class="ghost" onclick="closeModal('modalAnnounce')">Close</button>
+    </div>
+    <form id="formAnnounce">
+      <label>Title</label><input required name="title">
+      <div class="grid grid-2">
+        <div><label>Date</label><input required type="date" name="date"></div>
+        <div><label>Category</label>
+          <select name="category"><option>Urgent</option><option>Event</option><option>General</option></select>
+        </div>
+      </div>
+      <label><input type="checkbox" name="pinned"> Pin to top</label>
+      <label>Content</label><textarea required name="content" rows="3"></textarea>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
+        <button type="button" class="ghost" onclick="closeModal('modalAnnounce')">Cancel</button>
+        <button class="primary" type="submit">Publish</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="modal" id="modalAchieve">
+  <div class="modal-card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <h3 style="margin:0">Add Achievement</h3>
+      <button class="ghost" onclick="closeModal('modalAchieve')">Close</button>
+    </div>
+    <form id="formAchieve">
+      <label>Member</label><select required name="member" id="achMemberSelect"></select>
+      <div class="grid grid-2">
+        <div><label>Type</label>
+          <select name="type"><option>RPD</option><option>Viva</option><option>Semester Exam</option><option>FYP</option><option>Publication</option></select>
+        </div>
+        <div><label>Date</label><input type="date" required name="date"></div>
+      </div>
+      <label>Title</label><input required name="title" placeholder="e.g., PhD Viva Passed">
+      <label>Department</label><input name="department" placeholder="e.g., Chemical Engineering">
+      <label>Details</label><textarea name="details" rows="2"></textarea>
+      <label>Photo URL (optional)</label><input name="photo">
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
+        <button type="button" class="ghost" onclick="closeModal('modalAchieve')">Cancel</button>
+        <button class="primary" type="submit">Save</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="modal" id="modalPhoto">
+  <div class="modal-card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <h3 style="margin:0">Add Photo</h3>
+      <button class="ghost" onclick="closeModal('modalPhoto')">Close</button>
+    </div>
+    <form id="formPhoto">
+      <label>Title</label><input required name="title">
+      <div class="grid grid-2">
+        <div><label>Date</label><input type="date" required name="date"></div>
+        <div><label>Category</label><select name="category"><option>Cultural</option><option>Sports</option><option>Academic</option><option>Community</option></select></div>
+      </div>
+      <label>Image URL</label><input required name="url" placeholder="https://...">
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
+        <button type="button" class="ghost" onclick="closeModal('modalPhoto')">Cancel</button>
+        <button class="primary" type="submit">Add</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+
+<div class="modal" id="modalEditCommittee">
+  <div class="modal-card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <h3 style="margin:0">Edit Committee Member</h3>
+      <button class="ghost" onclick="closeModal('modalEditCommittee')">Close</button>
+    </div>
+    <form id="formEditCommittee">
+      <input type="hidden" name="id" id="editCommitteeId">
+      <label>Role</label><input required name="role" id="editCommitteeRole">
+      <label>Name</label><input required name="name" id="editCommitteeName">
+      <div class="grid grid-2">
+        <div><label>Email</label><input type="email" name="email" id="editCommitteeEmail"></div>
+        <div><label>Phone</label><input name="phone" id="editCommitteePhone"></div>
+      </div>
+      <label>Photo URL</label><input name="photo" id="editCommitteePhoto">
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
+        <button type="button" class="ghost" style="color:var(--red)" onclick="deleteCommitteeMember()">Delete</button>
+        <button type="button" class="ghost" onclick="closeModal('modalEditCommittee')">Cancel</button>
+        <button class="primary" type="submit">Save Changes</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="modal" id="modalEditAlumni">
+  <div class="modal-card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <h3 style="margin:0">Edit Alumni</h3>
+      <button class="ghost" onclick="closeModal('modalEditAlumni')">Close</button>
+    </div>
+    <form id="formEditAlumni">
+      <input type="hidden" name="id" id="editAlumniId">
+      <label>Name</label><input required name="name" id="editAlumniName">
+      <div class="grid grid-2">
+        <div><label>Batch</label><input name="batch" id="editAlumniBatch"></div>
+        <div><label>Location</label><input name="location" id="editAlumniLocation"></div>
+      </div>
+      <label>Position</label><input name="position" id="editAlumniPosition">
+      <label>Company</label><input name="company" id="editAlumniCompany">
+      <label>Photo URL</label><input name="photo" id="editAlumniPhoto">
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
+        <button type="button" class="ghost" style="color:var(--red)" onclick="deleteAlumni()">Delete</button>
+        <button type="button" class="ghost" onclick="closeModal('modalEditAlumni')">Cancel</button>
+        <button class="primary" type="submit">Save Changes</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="modal" id="modalEditAnnouncement">
+  <div class="modal-card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <h3 style="margin:0">Edit Announcement</h3>
+      <button class="ghost" onclick="closeModal('modalEditAnnouncement')">Close</button>
+    </div>
+    <form id="formEditAnnouncement">
+      <input type="hidden" name="id" id="editAnnouncementId">
+      <label>Title</label><input required name="title" id="editAnnouncementTitle">
+      <div class="grid grid-2">
+        <div><label>Date</label><input type="date" name="date" id="editAnnouncementDate"></div>
+        <div><label>Category</label><select name="category" id="editAnnouncementCategory"><option>General</option><option>Event</option><option>Urgent</option></select></div>
+      </div>
+      <label style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="editAnnouncementPinned" style="width:auto"> Pinned</label>
+      <label>Content</label><textarea rows="4" name="content" id="editAnnouncementContent"></textarea>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
+        <button type="button" class="ghost" style="color:var(--red)" onclick="deleteAnnouncement()">Delete</button>
+        <button type="button" class="ghost" onclick="closeModal('modalEditAnnouncement')">Cancel</button>
+        <button class="primary" type="submit">Save Changes</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="modal" id="modalEditAchievement">
+  <div class="modal-card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <h3 style="margin:0">Edit Achievement</h3>
+      <button class="ghost" onclick="closeModal('modalEditAchievement')">Close</button>
+    </div>
+    <form id="formEditAchievement">
+      <input type="hidden" name="id" id="editAchievementId">
+      <label>Member</label><input name="member" id="editAchievementMember">
+      <div class="grid grid-2">
+        <div><label>Type</label><select name="type" id="editAchievementType"><option>RPD</option><option>Viva</option><option>Semester Exam</option><option>FYP</option><option>Publication</option></select></div>
+        <div><label>Date</label><input type="date" name="date" id="editAchievementDate"></div>
+      </div>
+      <label>Title</label><input name="title" id="editAchievementTitle">
+      <label>Department</label><input name="department" id="editAchievementDepartment">
+      <label>Details</label><textarea rows="3" name="details" id="editAchievementDetails"></textarea>
+      <label>Photo URL</label><input name="photo" id="editAchievementPhoto">
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
+        <button type="button" class="ghost" style="color:var(--red)" onclick="deleteAchievementEdit()">Delete</button>
+        <button type="button" class="ghost" onclick="closeModal('modalEditAchievement')">Cancel</button>
+        <button class="primary" type="submit">Save Changes</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="modal" id="modalEditPhoto">
+  <div class="modal-card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <h3 style="margin:0">Edit Photo</h3>
+      <button class="ghost" onclick="closeModal('modalEditPhoto')">Close</button>
+    </div>
+    <form id="formEditPhoto">
+      <input type="hidden" name="id" id="editPhotoId">
+      <label>Title</label><input name="title" id="editPhotoTitle">
+      <div class="grid grid-2">
+        <div><label>Date</label><input type="date" name="date" id="editPhotoDate"></div>
+        <div><label>Category</label><select name="category" id="editPhotoCategory"><option>Cultural</option><option>Sports</option><option>Academic</option><option>Community</option></select></div>
+      </div>
+      <label>Image URL</label><input name="url" id="editPhotoUrl">
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
+        <button type="button" class="ghost" style="color:var(--red)" onclick="deletePhotoEdit()">Delete</button>
+        <button type="button" class="ghost" onclick="closeModal('modalEditPhoto')">Cancel</button>
+        <button class="primary" type="submit">Save Changes</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="lightbox" id="lightbox" onclick="this.classList.remove('active')"><img alt=""></div>
+
+<!-- Toast notification -->
+<div id="toast" class="toast"></div>
+
+<script src="js/data.js" defer></script>
+<script src="js/app.js" defer></script>
+<script src="js/admin.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
+<script src="js/supabase-config.js" defer></script>
+<script src="js/cloud.js" defer></script>
+</body>
+</html>

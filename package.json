@@ -1,0 +1,18 @@
+{
+  "name": "ais-bangladesh-utp-dashboard",
+  "version": "1.1.0",
+  "private": true,
+  "description": "Vercel-ready AIS Bangladesh Chapter, UTP dashboard",
+  "scripts": {
+    "dev": "vercel dev",
+    "deploy": "vercel --prod"
+  },
+  "keywords": [
+    "vercel",
+    "dashboard",
+    "utp",
+    "ais-bangladesh"
+  ],
+  "author": "OpenAI for Shokor",
+  "license": "UNLICENSED"
+}
