@@ -136,6 +136,15 @@
         </div>
       </form>
     </div>
+    <div id="contentCloudCard" class="card" style="padding:14px;margin-bottom:16px">
+      <div class="section-title"><h4 style="margin:0">Members, Events & Gallery Cloud Sync</h4><span class="chip" id="contentCloudStatusChip">Local data</span></div>
+      <div class="muted" style="margin:6px 0 10px">Publish your current browser data for members, events, and gallery into Supabase so all devices see the same content. Public pages read cloud content directly, while admin edits sync through the secure Vercel API.</div>
+      <div id="contentCloudMsg" style="font-size:13px;margin-top:6px;display:none"></div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px;flex-wrap:wrap">
+        <button class="ghost" type="button" onclick="pullContentFromCloud()">Pull cloud content</button>
+        <button class="primary" type="button" onclick="pushContentToCloud()">Push local content to Supabase</button>
+      </div>
+    </div>
     <hr style="margin:16px 0;border:none;border-top:1px solid #e2e8f0">
     <h4 style="margin:0 0 8px">Community Visibility & Quick Links</h4>
     <form id="formCommunityVisibility">
