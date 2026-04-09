@@ -860,7 +860,7 @@ function renderConcernTimeline(c) {
     <div class="timeline-item">
       <div class="timeline-dot ${concernTimelineTone(t.text)}"></div>
       <div>
-        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><strong>${t.by}</strong><span class="chip ${concernTimelineTone(t.text)}">${String(t.text||'').toLowerCase().includes('status changed') ? 'Status update' : String(t.text||'').toLowerCase().includes('submitted') ? 'Submitted' : 'Committee update'}</span></div>
+        <div class="timeline-meta"><strong>${t.by}</strong><span class="chip ${concernTimelineTone(t.text)}">${String(t.text||'').toLowerCase().includes('status changed') ? 'Status update' : String(t.text||'').toLowerCase().includes('submitted') ? 'Submitted' : 'Committee update'}</span></div>
         <div class="muted">${new Date(t.at).toLocaleString()}</div>
         <div>${t.text}</div>
       </div>
@@ -868,9 +868,9 @@ function renderConcernTimeline(c) {
 }
 function renderPublicConcernSummary(c) {
   const reply = concernLatestReply(c);
-  return `<div class="card concern-public-summary">
+  return `<div class="card concern-public-summary public-summary-card">
     <div class="section-title"><h3 style="margin:0;font-size:18px">Tracking summary</h3><span class="chip ${concernStatusTone(c.status)}">${c.status || 'Open'}</span></div>
-    <div class="grid grid-2">
+    <div class="grid grid-2 public-summary-grid">
       <div class="mini-stat"><div class="mini-label">Assigned to</div><div class="mini-value">${c.assignee || 'Committee inbox'}</div></div>
       <div class="mini-stat"><div class="mini-label">Last updated</div><div class="mini-value">${new Date(c.updatedAt || c.createdAt).toLocaleString()}</div></div>
     </div>
@@ -883,14 +883,14 @@ function renderPublicConcernSummary(c) {
 function renderConcernReplyPanel(c) {
   if (!adminMode()) return '';
   const internalNotes = concernInternalNotes(c);
-  return `<div class="card" style="margin-top:12px">
+  return `<div class="card admin-response-card" style="margin-top:12px">
     <div class="section-title"><h3 style="margin:0;font-size:18px">Committee response</h3><span class="chip ${concernStatusTone(c.status)}">${c.status}</span></div>
-    <div class="grid grid-2">
+    <div class="grid grid-2 admin-response-grid">
       <div><label>Status</label><select id="concern-status-${c.id}"><option ${c.status==='Open'?'selected':''}>Open</option><option ${c.status==='In Review'?'selected':''}>In Review</option><option ${c.status==='Resolved'?'selected':''}>Resolved</option><option ${c.status==='Closed'?'selected':''}>Closed</option></select></div>
       <div><label>Assign to</label><input id="concern-assignee-${c.id}" value="${c.assignee || currentAdminName()}" placeholder="Committee member"></div>
     </div>
     <label>Reply</label><textarea id="concern-reply-${c.id}" rows="4" placeholder="Write a helpful response..."></textarea>
-    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px;flex-wrap:wrap">
+    <div class="admin-response-actions">
       <button class="ghost" type="button" onclick="updateConcernStatus(${c.id})">Update status</button>
       <button class="primary" type="button" onclick="replyConcern(${c.id})">Send reply</button>
     </div>
@@ -898,7 +898,7 @@ function renderConcernReplyPanel(c) {
       <div class="section-title"><h3 style="margin:0;font-size:18px">Internal notes</h3><span class="chip">Admin only</span></div>
       <div class="muted" style="margin-bottom:10px">These notes are private to the committee and are never shown on the public tracking view.</div>
       <textarea id="concern-note-${c.id}" rows="3" placeholder="Write a private committee note..."></textarea>
-      <div style="display:flex;justify-content:flex-end;margin-top:10px">
+      <div class="internal-note-actions">
         <button class="ghost" type="button" onclick="saveInternalNote(${c.id})">Save internal note</button>
       </div>
       <div class="internal-notes-list">
@@ -962,7 +962,7 @@ function renderConcerns() {
         </div>` : `
         <div class="grid grid-2">
           <div><label>Ticket or UTP email</label><input id="concernLookup" placeholder="AIS-AB12-3456 or name@utp.edu.my"></div>
-          <div style="display:flex;align-items:flex-end"><button class="ghost" type="button" onclick="renderConcerns()">Refresh</button></div>
+          <div class="lookup-refresh-wrap"><button class="ghost" type="button" onclick="renderConcerns()">Refresh</button></div>
         </div>`}
         <div id="concernList" class="stack-list" style="margin-top:12px"></div>
       </div>
@@ -1016,16 +1016,16 @@ function renderConcerns() {
     list.innerHTML = items.length ? items.map(c => `
       <div class="card concern-card">
         <div class="section-title">
-          <div><h3 style="margin:0;font-size:19px">${c.title || 'Untitled concern'}</h3><div class="muted">${c.ticket || ''} • ${c.name || 'Anonymous'} • ${c.email || ''}</div></div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
+          <div class="concern-head-main"><h3 class="concern-title">${c.title || 'Untitled concern'}</h3><div class="muted concern-meta">${c.ticket || ''} • ${c.name || 'Anonymous'} • ${c.email || ''}</div></div>
+          <div class="concern-head-chips">
             <span class="chip ${concernStatusTone(c.status)}">${c.status || 'Open'}</span>
             ${c.category ? `<span class="chip">${c.category}</span>` : ''}
             ${c.priority ? `<span class="chip">${c.priority}</span>` : ''}
           </div>
         </div>
         <p>${c.message || ''}</p>
-        <div class="grid grid-2">
-          <div class="card" style="padding:12px">
+        <div class="grid grid-2 concern-detail-grid">
+          <div class="card concern-timeline-card" style="padding:12px">
             <div class="section-kicker">Timeline</div>
             <div class="timeline">${renderConcernTimeline(c)}</div>
           </div>
