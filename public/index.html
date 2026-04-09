@@ -123,6 +123,20 @@
       </div>
     </form>
     <hr style="margin:16px 0;border:none;border-top:1px solid #e2e8f0">
+    <div id="adminInboxConfigCard" class="card" style="padding:14px;margin-bottom:16px">
+      <div class="section-title"><h4 style="margin:0">Secure Admin Inbox</h4><span id="adminApiStatusChip" class="chip">Not connected</span></div>
+      <div class="muted" style="margin:6px 0 10px">Paste your Vercel <code>ADMIN_INBOX_TOKEN</code> here once on this browser so committee-only concern inbox actions use secure server-side API routes.</div>
+      <form id="formAdminInboxToken">
+        <label>Admin inbox token</label>
+        <input id="adminInboxTokenInput" type="password" placeholder="Paste ADMIN_INBOX_TOKEN from Vercel">
+        <div id="adminInboxMsg" style="font-size:13px;margin-top:6px;display:none"></div>
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px;flex-wrap:wrap">
+          <button class="ghost" type="button" onclick="clearAdminInboxToken()">Disconnect</button>
+          <button class="primary" type="submit">Connect secure inbox</button>
+        </div>
+      </form>
+    </div>
+    <hr style="margin:16px 0;border:none;border-top:1px solid #e2e8f0">
     <h4 style="margin:0 0 8px">Community Visibility & Quick Links</h4>
     <form id="formCommunityVisibility">
       <div class="grid grid-2">

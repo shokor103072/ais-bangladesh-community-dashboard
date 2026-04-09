@@ -1,6 +1,6 @@
 window.SUPABASE_CONFIG = {
-  enabled: true,
-  url: 'https://sfszbkxfpnmmhntlqpma.supabase.co',
-  anonKey: 'sb_publishable_xGtglgpBKkciBfnXxHzxig_oPY-mItA',
+  enabled: false,
+  url: '',
+  anonKey: '',
   projectName: 'AIS Bangladesh UTP Dashboard'
 };

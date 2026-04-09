@@ -88,3 +88,28 @@ Move the rest of the editable dashboard data to Supabase:
 - announcements
 - achievements
 - gallery
+
+
+## Step 3: Secure admin concern inbox via Vercel API
+
+This package adds a protected admin inbox path:
+- public users still submit concerns directly with the Supabase publishable key
+- admin full inbox read/update now goes through `/api/admin-concerns`
+- Vercel stores the sensitive keys in environment variables
+
+### Vercel environment variables
+Add these in Vercel Project Settings → Environment Variables:
+- `SUPABASE_URL` = your project URL
+- `SUPABASE_SERVICE_ROLE_KEY` = your Supabase service role key
+- `ADMIN_INBOX_TOKEN` = any long secret string you choose
+
+### One-time SQL cleanup
+If you previously enabled broad admin select/update RLS policies for testing, run `supabase/step3-lockdown.sql` in Supabase.
+
+### Admin browser setup
+After logging in as admin on the site:
+1. open **Manage**
+2. paste the same `ADMIN_INBOX_TOKEN`
+3. click **Connect secure inbox**
+
+The token is stored only in that browser. It is not embedded in the public site code.
