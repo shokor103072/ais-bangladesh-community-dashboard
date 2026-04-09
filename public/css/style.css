@@ -278,3 +278,149 @@ body.admin-mode .admin-only{display:inline-flex !important}
 .internal-notes-list{display:grid;gap:10px;margin-top:12px}
 .internal-note-item{padding:12px;border-radius:14px;background:#f8fafc;border:1px solid #e2e8f0}
 .internal-note-text{margin-top:6px;white-space:pre-wrap;color:#0f172a}
+
+/* ===== Step 8: Mobile + Admin UI polish ===== */
+.header-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.header-admin-btn{font-size:12px;padding:8px 12px !important;border-radius:999px}
+button.primary,button.ghost,.top-nav button,.bottom-nav button,.view-switcher button{transition:transform .16s ease, box-shadow .18s ease, background .18s ease, color .18s ease}
+button.primary:hover,button.ghost:hover,.top-nav button:hover,.view-switcher button:hover{transform:translateY(-1px)}
+button.primary{box-shadow:0 10px 20px rgba(0,106,78,.16)}
+button.ghost{background:#f1f5f9;color:#0f172a;border:1px solid #dbe4ee}
+button.ghost:hover{background:#e8eef5}
+button.primary:active,button.ghost:active{transform:translateY(0)}
+
+/* Admin settings modal */
+#modalAdminSettings{align-items:flex-start;padding:24px 18px}
+#modalAdminSettings .modal-card{
+  max-width:1040px;
+  width:min(1040px, 100%);
+  border-radius:24px;
+  padding:24px;
+  background:linear-gradient(180deg,#ffffff 0%,#fbfdff 100%);
+  border:1px solid #e2e8f0;
+}
+#modalAdminSettings h3,#modalAdminSettings h4{letter-spacing:-.02em}
+#modalAdminSettings .card{
+  border:1px solid #e5edf5;
+  border-radius:18px;
+  box-shadow:none;
+  background:#fcfeff;
+}
+#modalAdminSettings .section-title{gap:10px;flex-wrap:wrap}
+#modalAdminSettings form + hr,
+#modalAdminSettings #contentCloudCard + hr,
+#modalAdminSettings #formCommunityVisibility + hr{margin:20px 0}
+#modalAdminSettings #formChangePassword,
+#modalAdminSettings #formAdminInboxToken,
+#modalAdminSettings #formCommunityVisibility{display:grid;gap:6px}
+#modalAdminSettings #formChangePassword input,
+#modalAdminSettings #formAdminInboxToken input,
+#modalAdminSettings #formCommunityVisibility input,
+#modalAdminSettings #formCommunityVisibility textarea{min-height:46px}
+#modalAdminSettings #formCommunityVisibility textarea{min-height:130px;resize:vertical}
+#modalAdminSettings label input[type="checkbox"]{margin-right:8px;transform:translateY(1px)}
+#modalAdminSettings .grid.grid-2{align-items:start}
+#modalAdminSettings .stack-list{gap:12px}
+#modalAdminSettings .stack-item,
+#adminAccountsList > div,
+#adminLogsList > div{
+  border:1px solid #e2e8f0;
+  border-radius:16px;
+  padding:14px;
+  background:#fff;
+}
+#adminLogsList{max-height:520px;overflow:auto;padding-right:4px}
+#adminAccountsList .btn-edit,#adminAccountsList .btn-delete{min-width:84px;min-height:40px;font-size:13px;border-radius:12px}
+#modalAdminSettings .ghost,#modalAdminSettings .primary{min-height:44px}
+#masterAdminSections .grid.grid-2{align-items:start}
+#masterAdminSections .card{height:100%}
+#contentCloudCard button,#adminInboxConfigCard button{min-width:220px}
+
+/* Concern admin + public cards */
+.concern-card{padding:18px;border-radius:22px}
+.concern-title{margin:0;font-size:22px;line-height:1.15;letter-spacing:-.02em}
+.concern-meta{margin-top:6px;line-height:1.5;word-break:break-word}
+.concern-head-chips{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;align-items:flex-start}
+.concern-card > p{margin:12px 0 0;font-size:15px;line-height:1.65;color:#0f172a;white-space:pre-wrap}
+.concern-detail-grid{margin-top:14px;align-items:start}
+.concern-timeline-card{background:linear-gradient(180deg,#fff,#fbfdff)}
+.timeline-meta{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:2px}
+.admin-response-card{border-radius:20px;background:linear-gradient(180deg,#ffffff,#fbfdff)}
+.admin-response-grid{align-items:end}
+.admin-response-actions,.internal-note-actions{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;margin-top:12px}
+.admin-response-actions .ghost,.admin-response-actions .primary,.internal-note-actions .ghost{min-height:44px;min-width:156px}
+.internal-notes-card{margin-top:14px;padding-top:16px;border-top:1px solid #e5edf5}
+.internal-notes-list{display:grid;gap:10px;margin-top:12px}
+.internal-note-item{padding:12px;border:1px solid #e5edf5;border-radius:16px;background:#fff}
+.internal-note-text{margin-top:6px;white-space:pre-wrap;line-height:1.55}
+.public-summary-card{border-radius:20px;background:linear-gradient(180deg,#f8fffb,#ffffff)}
+.public-summary-grid{margin-bottom:10px}
+.lookup-refresh-wrap{display:flex;align-items:flex-end}
+.lookup-refresh-wrap .ghost{min-height:46px;min-width:120px}
+
+/* Better mobile spacing */
+@media (min-width: 1180px){
+  .concern-detail-grid{grid-template-columns:1.1fr .95fr}
+  #modalAdminSettings .modal-card{max-height:92vh}
+}
+@media (max-width: 900px){
+  .header-inner{align-items:flex-start}
+  .header-actions{width:100%;justify-content:space-between}
+  .header-actions .view-switcher{margin-left:auto}
+  #modalAdminSettings .modal-card{padding:18px;border-radius:20px}
+  #masterAdminSections .grid.grid-2{grid-template-columns:1fr}
+  #contentCloudCard button,#adminInboxConfigCard button{min-width:0;width:100%}
+  .admin-response-actions .ghost,.admin-response-actions .primary,.internal-note-actions .ghost{width:100%}
+  .lookup-refresh-wrap .ghost{width:100%}
+}
+@media (max-width: 640px){
+  #app{padding:0 10px 90px}
+  .brand h1{font-size:16px}
+  .brand p{font-size:11px}
+  .header-actions{gap:6px}
+  .header-admin-btn{padding:8px 10px !important;font-size:11px}
+  .view-switcher{width:100%;justify-content:space-between;padding:4px}
+  .view-switcher button{flex:1;justify-content:center;padding:8px 6px;font-size:12px}
+  .top-nav button{padding:10px 12px;border-radius:12px}
+  .page{padding-top:12px}
+  .card{padding:14px}
+  .section-title{align-items:flex-start}
+  .section-title h2{font-size:17px}
+  .page-banner{padding:16px}
+  .page-banner h2{font-size:21px;line-height:1.15}
+  .hero{padding:18px}
+  .hero h2{font-size:22px}
+  .hero-stat strong{font-size:20px}
+  .spotlight-item{align-items:flex-start;flex-direction:column}
+  .bottom-nav{gap:4px;padding:8px}
+  .bottom-nav button{min-width:60px}
+  .concern-title{font-size:20px}
+  .concern-head-chips{justify-content:flex-start}
+  .concern-detail-grid{grid-template-columns:1fr}
+  .timeline-item{grid-template-columns:12px 1fr}
+  .timeline-dot{width:9px;height:9px}
+  .public-summary-grid,.admin-response-grid{grid-template-columns:1fr}
+  .mini-stat{padding:12px}
+  .cloud-badge{left:12px;right:12px;bottom:78px;text-align:center;border-radius:18px}
+  #modalAdminSettings{padding:0}
+  #modalAdminSettings .modal-card{
+    width:100%;
+    max-width:none;
+    height:100vh;
+    max-height:100vh;
+    border-radius:22px 22px 0 0;
+    padding:18px 16px 96px;
+    overflow:auto;
+  }
+  #modalAdminSettings .section-title h4,
+  #modalAdminSettings h4{font-size:16px}
+  #modalAdminSettings .ghost,
+  #modalAdminSettings .primary,
+  #modalAdminSettings input,
+  #modalAdminSettings select,
+  #modalAdminSettings textarea{font-size:16px}
+  #modalAdminSettings .grid.grid-2{grid-template-columns:1fr}
+  #modalAdminSettings .grid.grid-2 > label{display:flex;align-items:flex-start;padding:10px 12px;border:1px solid #e2e8f0;border-radius:14px;background:#fff;margin:0}
+  #modalAdminSettings .grid.grid-2 > label input[type="checkbox"]{margin-top:2px}
+  #adminLogsList{max-height:none}
+}
