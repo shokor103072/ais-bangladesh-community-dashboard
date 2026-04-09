@@ -20,9 +20,9 @@
           <p>AI Society • Universiti Teknologi PETRONAS</p>
         </div>
       </div>
-      <div style="display:flex;align-items:center;gap:8px">
-        <button id="adminToggleBtn" class="ghost" style="font-size:12px;padding:6px 10px" onclick="toggleAdminPanel()">🔒 Admin</button>
-        <button id="adminSettingsBtn" class="ghost admin-only" style="font-size:12px;padding:6px 10px;display:none" onclick="openModal('modalAdminSettings')">⚙️ Manage</button>
+      <div class="header-actions">
+        <button id="adminToggleBtn" class="ghost header-admin-btn" onclick="toggleAdminPanel()">🔒 Admin</button>
+        <button id="adminSettingsBtn" class="ghost admin-only header-admin-btn" style="display:none" onclick="openModal('modalAdminSettings')">⚙️ Manage</button>
         <div class="view-switcher" role="tablist" aria-label="View mode">
           <button data-mode="auto" class="active" title="Responsive auto">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
@@ -85,7 +85,7 @@
 
 <!-- Admin Login Modal -->
 <div class="modal" id="modalAdminLogin">
-  <div class="modal-card">
+  <div class="modal-card admin-settings-modal">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
       <h3 style="margin:0">🔐 Admin Login</h3>
       <button class="ghost" onclick="closeModal('modalAdminLogin')">Close</button>
