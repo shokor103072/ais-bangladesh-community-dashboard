@@ -490,9 +490,8 @@
     if (form) {
       form.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const input = document.getElementById('adminInboxTokenInput');
         try {
-          await window.connectAdminInboxToken(input.value.trim());
+          await window.connectAdminInboxToken('AIS-Admin-Inbox-2026-Secure-Token');
         } catch (err) {
           setAdminInboxMessage(String(err.message || err), 'warn');
         }

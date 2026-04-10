@@ -360,18 +360,68 @@ function clearAdminLogs() {
   showToast('Audit logs cleared');
 }
 
-async function addCommitteeMember() {
+let _committeePickerSelectedMember = null;
+
+function addCommitteeMember() {
   if (!isAdmin) return;
-  const role = prompt('Committee role (example: Advisor, President, Vice President)');
-  if (!role) return;
-  const name = prompt('Full name');
-  if (!name) return;
-  const gender = prompt('Gender (Male/Female)', 'Male') || '';
-  const normalizedGender = /female/i.test(gender) ? 'Female' : /male/i.test(gender) ? 'Male' : '';
-  const email = prompt('Email (optional)') || '';
-  const phone = prompt('Phone (optional)') || '';
-  const photo = prompt('Photo URL (optional)') || '';
-  const newItem = { id: Date.now(), role, name, gender: normalizedGender, email, phone, photo };
+  _committeePickerSelectedMember = null;
+  document.getElementById('newCommitteeRole').value = '';
+  document.getElementById('committeePickerSearch').value = '';
+  document.getElementById('committeePickerList').style.display = 'none';
+  document.getElementById('committeePickerList').innerHTML = '';
+  document.getElementById('committeePickerSelected').style.display = 'none';
+  openModal('modalAddCommittee');
+}
+
+window.filterCommitteePicker = function(query) {
+  const list = document.getElementById('committeePickerList');
+  const q = (query || '').trim().toLowerCase();
+  if (!q) { list.style.display = 'none'; list.innerHTML = ''; return; }
+  const matches = membersData.filter(m => {
+    return [m.name, m.email, m.department, m.category].some(v => v && v.toLowerCase().includes(q));
+  }).slice(0, 12);
+  if (!matches.length) {
+    list.style.display = 'block';
+    list.innerHTML = '<div style="padding:10px 14px;color:var(--muted)">No members found</div>';
+    return;
+  }
+  list.style.display = 'block';
+  list.innerHTML = matches.map(m => `
+    <div onclick="selectCommitteePicker(${Number(m.id)})" style="display:flex;align-items:center;gap:10px;padding:8px 12px;cursor:pointer;border-bottom:1px solid #f1f5f9" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background=''">
+      <img src="${m.photo || 'https://i.pravatar.cc/200'}" alt="" style="width:34px;height:34px;border-radius:50%;object-fit:cover;flex-shrink:0">
+      <div><strong style="font-size:14px">${m.name || ''}</strong><div style="font-size:12px;color:var(--muted)">${[m.category, m.department].filter(Boolean).join(' · ')}</div></div>
+    </div>`).join('');
+};
+
+window.selectCommitteePicker = function(id) {
+  const m = membersData.find(x => Number(x.id) === Number(id));
+  if (!m) return;
+  _committeePickerSelectedMember = m;
+  document.getElementById('committeePickerSearch').value = m.name || '';
+  document.getElementById('committeePickerList').style.display = 'none';
+  const sel = document.getElementById('committeePickerSelected');
+  sel.style.display = 'flex';
+  document.getElementById('committeePickerPhoto').src = m.photo || 'https://i.pravatar.cc/200';
+  document.getElementById('committeePickerName').textContent = m.name || '';
+  document.getElementById('committeePickerMeta').textContent = [m.category, m.department, m.email].filter(Boolean).join(' · ');
+};
+
+window.confirmAddCommitteeMemberFromPicker = async function() {
+  if (!isAdmin) return;
+  const role = (document.getElementById('newCommitteeRole').value || '').trim();
+  if (!role) { showToast('Please enter a role first'); return; }
+  if (!_committeePickerSelectedMember) { showToast('Please search and select a member first'); return; }
+  const m = _committeePickerSelectedMember;
+  const newItem = {
+    id: Date.now(),
+    role,
+    name: m.name || '',
+    gender: m.gender || '',
+    email: m.email || '',
+    phone: m.phone || '',
+    photo: m.photo || '',
+    memberId: Number(m.id)
+  };
   committeeData.unshift(newItem);
   store.set('utp_committee', committeeData);
   if (typeof window.saveCommitteeToCloud === 'function') {
@@ -382,10 +432,11 @@ async function addCommitteeMember() {
       store.set('utp_committee', committeeData);
     } catch (err) { console.warn('Cloud committee save failed:', err); }
   }
-  logAction('Committee member added', `${name} • ${role}`);
-  showToast('Committee member added');
+  closeModal('modalAddCommittee');
+  logAction('Committee member added', `${m.name} • ${role}`);
+  showToast(`${m.name} added as ${role}`);
   reRenderAll();
-}
+};
 async function confirmDeleteCommitteeMember(key) {
   if (!isAdmin) return;
   key = decodeURIComponent(String(key));
@@ -703,6 +754,10 @@ function openEditAlumni(key) {
   document.getElementById('editAlumniResearchGate').value = a.researchGate || '';
   document.getElementById('editAlumniWebsite').value = a.website || '';
   openModal('modalEditAlumni');
+  setTimeout(() => {
+    if (typeof initUploadWidgets === 'function') initUploadWidgets();
+    if (typeof window.syncUploadPreviewFromInput === 'function') window.syncUploadPreviewFromInput('editAlumniPhoto', 'editAlumniPhotoPreview', a.name || 'Alumni photo');
+  }, 50);
 }
 
 document.getElementById('formEditAlumni').addEventListener('submit', async e => {
