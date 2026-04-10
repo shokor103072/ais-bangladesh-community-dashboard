@@ -20,7 +20,31 @@ window.getCommitteeMessage = () => committeeMessage;
 window.setCommitteeMessage = function(text, author, active) {
   committeeMessage = { text: (text || '').trim(), author: (author || '').trim(), active: !!active };
   store.set('utp_committee_message', committeeMessage);
+  if (typeof window.saveSiteSettingToCloud === 'function') {
+    window.saveSiteSettingToCloud('committee_message', committeeMessage).catch(e => console.warn('Settings cloud save failed:', e));
+  }
   renderHome();
+};
+
+/* ===== Cloud settings refresh ===== */
+window.refreshSiteSettingsFromCloud = async function () {
+  try {
+    if (typeof window.loadSiteSettingsFromCloud !== 'function') return;
+    const settings = await window.loadSiteSettingsFromCloud();
+    if (!settings) return;
+    let changed = false;
+    if (settings.community_links && typeof settings.community_links === 'object') {
+      communityLinksData = { ...defaultCommunityLinks, ...settings.community_links };
+      store.set('utp_community_links', communityLinksData);
+      changed = true;
+    }
+    if (settings.committee_message && typeof settings.committee_message === 'object') {
+      committeeMessage = { text: '', author: '', active: false, ...settings.committee_message };
+      store.set('utp_committee_message', committeeMessage);
+      changed = true;
+    }
+    if (changed) { renderHome(); }
+  } catch (e) { console.warn('refreshSiteSettingsFromCloud failed:', e); }
 };
 
 /* ===== Themes ===== */

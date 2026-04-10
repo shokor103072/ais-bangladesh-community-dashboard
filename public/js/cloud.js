@@ -14,7 +14,8 @@
     alumni: 'alumni_directory',
     events: 'events_board',
     gallery: 'gallery_items',
-    admins: 'admin_accounts'
+    admins: 'admin_accounts',
+    settings: 'site_settings'
   };
   const MEDIA_BUCKET = config.mediaBucket || 'community-media';
 
@@ -244,6 +245,7 @@
       if (typeof refreshConcernsFromCloud === 'function') refreshConcernsFromCloud(true);
       if (typeof refreshDirectoryMediaFromCloud === 'function') refreshDirectoryMediaFromCloud(true);
       if (typeof refreshAdminAccountsFromCloud === 'function') refreshAdminAccountsFromCloud(false);
+      if (typeof refreshSiteSettingsFromCloud === 'function') refreshSiteSettingsFromCloud();
     } catch (err) {
       console.error('Supabase init failed:', err);
       state.ready = false;
@@ -279,6 +281,9 @@
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: CONTENT_TABLES.admins }, () => {
         if (typeof refreshAdminAccountsFromCloud === 'function') refreshAdminAccountsFromCloud(false);
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: CONTENT_TABLES.settings }, () => {
+        if (typeof refreshSiteSettingsFromCloud === 'function') refreshSiteSettingsFromCloud();
       })
       .subscribe();
   }
@@ -395,6 +400,20 @@
     return data.publicUrl;
   };
 
+  window.loadSiteSettingsFromCloud = async function () {
+    if (!state.ready) return null;
+    const { data, error } = await state.client.from(CONTENT_TABLES.settings).select('*');
+    if (error) { console.warn('Settings load error:', error); return null; }
+    const map = {};
+    (data || []).forEach(r => { map[r.key] = r.value; });
+    return map;
+  };
+
+  window.saveSiteSettingToCloud = async function (key, value) {
+    if (!state.ready) return;
+    await adminContentApi('POST', 'settings', { key, value });
+  };
+
   window.pushContentToCloud = async function () {
     if (!state.ready) {
       setContentCloudMessage('Supabase is not connected yet. Check supabase-config.js first.', 'warn');
@@ -436,6 +455,14 @@
           errors.push(`${col.label}: ${String(err.message || err)}`);
         }
       }
+
+      // Also push site settings (community links, committee message)
+      try {
+        const cm = typeof window.getCommitteeMessage === 'function' ? window.getCommitteeMessage() : null;
+        const cl = typeof communityLinksData !== 'undefined' ? communityLinksData : null;
+        if (cm) await adminContentApi('POST', 'settings', { key: 'committee_message', value: cm });
+        if (cl) await adminContentApi('POST', 'settings', { key: 'community_links', value: cl });
+      } catch(e) { console.warn('Settings push failed:', e); }
 
       if (errors.length) {
         const succeeded = toSync.length - errors.length;

@@ -282,6 +282,9 @@ document.getElementById('formCommunityVisibility')?.addEventListener('submit', e
   store.set(COMMUNITY_LINKS_KEY, communityLinksData);
   store.set(ONBOARD_STEPS_KEY, onboardSteps);
   store.set(FAQ_KEY, faqData);
+  if (typeof window.saveSiteSettingToCloud === 'function') {
+    window.saveSiteSettingToCloud('community_links', communityLinksData).catch(e => console.warn('Community links cloud save failed:', e));
+  }
   logAction('Public settings updated', 'Visibility, links, onboarding, or FAQ changed');
   showToast('Public settings updated');
   reRenderAll();
