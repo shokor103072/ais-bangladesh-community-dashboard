@@ -2,7 +2,8 @@ const REQUIRED = ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'ADMIN_INBOX_TOKE
 const TABLES = {
   members: 'members_directory',
   events: 'events_board',
-  gallery: 'gallery_items'
+  gallery: 'gallery_items',
+  admins: 'admin_accounts'
 };
 
 function json(res, status, body) {
