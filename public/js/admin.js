@@ -650,13 +650,16 @@ document.getElementById('formEditCommittee').addEventListener('submit', async e 
     phone: f.phone.value.trim()
   });
   if (f.photo.value.trim()) committeeData[idx].photo = f.photo.value.trim();
+  if (!Number.isFinite(Number(committeeData[idx].id)) || Number(committeeData[idx].id) <= 0) {
+    committeeData[idx].id = Date.now();
+  }
   store.set('utp_committee', committeeData);
   if (typeof window.saveCommitteeToCloud === 'function') {
     try {
       const saved = await window.saveCommitteeToCloud(committeeData[idx]);
       if (saved) committeeData[idx] = saved;
       store.set('utp_committee', committeeData);
-    } catch (err) { console.warn('Cloud committee update failed:', err); }
+    } catch (err) { console.warn('Cloud committee update failed:', err); showToast('Saved locally – cloud sync failed: ' + (err.message || err), 'warn'); }
   }
   closeModal('modalEditCommittee');
   showToast('Committee profile updated');
@@ -723,13 +726,16 @@ document.getElementById('formEditAlumni').addEventListener('submit', async e => 
     website: f.website ? f.website.value.trim() : ''
   });
   if (f.photo.value.trim()) alumniData[idx].photo = f.photo.value.trim();
+  if (!Number.isFinite(Number(alumniData[idx].id)) || Number(alumniData[idx].id) <= 0) {
+    alumniData[idx].id = Date.now();
+  }
   store.set('utp_alumni', alumniData);
   if (typeof window.saveAlumniToCloud === 'function') {
     try {
       const saved = await window.saveAlumniToCloud(alumniData[idx]);
       if (saved) alumniData[idx] = saved;
       store.set('utp_alumni', alumniData);
-    } catch (err) { console.warn('Cloud alumni update failed:', err); }
+    } catch (err) { console.warn('Cloud alumni update failed:', err); showToast('Saved locally – cloud sync failed: ' + (err.message || err), 'warn'); }
   }
   closeModal('modalEditAlumni');
   showToast('Alumni profile updated');

@@ -5,8 +5,8 @@ const store = {
 };
 
 let membersData = store.get('utp_members', members);
-let committeeData = store.get('utp_committee', committee);
-let alumniData = store.get('utp_alumni', alumni);
+let committeeData = (store.get('utp_committee', committee) || []).map(function(c) { return (Number.isFinite(Number(c.id)) && Number(c.id) > 0) ? c : Object.assign({}, c, { id: Date.now() + Math.floor(Math.random() * 9999) }); });
+let alumniData   = (store.get('utp_alumni',    alumni)    || []).map(function(a) { return (Number.isFinite(Number(a.id)) && Number(a.id) > 0) ? a : Object.assign({}, a, { id: Date.now() + Math.floor(Math.random() * 9999) }); });
 let eventsData = store.get('utp_events', events);
 let announcementsData = store.get('utp_announcements', announcements);
 let achievementsData = store.get('utp_achievements', achievements);
