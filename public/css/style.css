@@ -553,3 +553,7 @@ body.theme-midnight .hadith-box{background:linear-gradient(160deg,#1e1a09,#1a160
 body.theme-midnight .hadith-box .hadith-arabic{color:#f5d98a}
 body.theme-midnight .hadith-box .hadith-text{color:#e0c870}
 body.theme-midnight .hadith-box .hadith-source{color:#c9a830}
+
+/* Hadith Bangla translation line */
+.hadith-bangla{font-size:13px;line-height:1.7;color:#5a3e00;margin:4px 0 8px;padding:6px 10px;background:rgba(255,215,0,.1);border-radius:8px;font-family:inherit}
+body.theme-midnight .hadith-bangla{background:rgba(255,215,0,.07);color:#d4a800}
