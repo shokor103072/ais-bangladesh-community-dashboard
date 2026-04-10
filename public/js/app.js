@@ -161,6 +161,10 @@ function applyView(mode) {
   document.querySelectorAll('.view-switcher button').forEach(btn => btn.addEventListener('click', () => applyView(btn.dataset.mode)));
 })();
 
+document.addEventListener('DOMContentLoaded', () => {
+  initUploadWidgets();
+});
+
 /* --------- Navigation --------- */
 function showPage(id) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -206,6 +210,141 @@ function socialLinksOf(m) {
 }
 function currentAdminName() { return (typeof adminSession !== 'undefined' && adminSession && adminSession.name) ? adminSession.name : 'Committee Admin'; }
 function isValidUtpEmail(email) { return /^[A-Za-z0-9._%+-]+@utp\.edu\.my$/i.test((email || '').trim()); }
+function looksLikeLocalFilePath(value='') { return /^[A-Za-z]:\\|^\\/.test(String(value).trim()) || String(value).includes('fakepath'); }
+function isVideoUrl(url='') {
+  const v = String(url || '').trim().toLowerCase();
+  return v.startsWith('data:video/') || /\.(mp4|webm|ogg|mov|m4v)(\?|#|$)/.test(v);
+}
+function detectMediaType(url='') { return isVideoUrl(url) ? 'video' : 'image'; }
+function mediaPreviewHtml(url='', title='', opts={}) {
+  const safeUrl = escapeHtml(url || '');
+  const safeTitle = escapeHtml(title || '');
+  if (detectMediaType(url) === 'video') {
+    return `<video src="${safeUrl}" ${opts.controls ? 'controls' : 'muted playsinline preload="metadata"'}></video>`;
+  }
+  return `<img src="${safeUrl}" alt="${safeTitle}">`;
+}
+function formatBytes(bytes=0) {
+  const n = Number(bytes) || 0;
+  if (!n) return 'Ready';
+  const units = ['B','KB','MB','GB'];
+  let value = n;
+  let idx = 0;
+  while (value >= 1024 && idx < units.length - 1) { value /= 1024; idx += 1; }
+  return `${value >= 10 || idx === 0 ? value.toFixed(0) : value.toFixed(1)} ${units[idx]}`;
+}
+async function fileToDataUrl(file) {
+  return await new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(reader.error || new Error('Unable to read file'));
+    reader.readAsDataURL(file);
+  });
+}
+function setUploadPreview(previewId, value='', label='') {
+  const box = document.getElementById(previewId);
+  if (!box) return;
+  if (!value) {
+    box.classList.remove('active');
+    box.innerHTML = '';
+    return;
+  }
+  box.classList.add('active');
+  box.innerHTML = `${mediaPreviewHtml(value, label, { controls: detectMediaType(value) === 'video' })}<div class="meta"><strong>${escapeHtml(label || 'Selected file')}</strong><span>${detectMediaType(value) === 'video' ? 'Video ready' : 'Image ready'}</span></div>`;
+}
+function syncUploadPreviewFromInput(inputId, previewId, label='Current file') {
+  const input = document.getElementById(inputId);
+  if (!input) return;
+  const value = String(input.value || '').trim();
+  setUploadPreview(previewId, value, label || 'Current file');
+}
+async function assignUploadedFileToInput(file, options = {}) {
+  const { inputId, previewId, folder = 'general', kind = 'image' } = options;
+  const input = document.getElementById(inputId);
+  if (!input || !file) return;
+  const isImage = file.type.startsWith('image/');
+  const isVideo = file.type.startsWith('video/');
+  if (kind === 'image' && !isImage) {
+    showToast('Please upload an image file here');
+    return;
+  }
+  if (kind === 'media' && !(isImage || isVideo)) {
+    showToast('Please upload an image or video file');
+    return;
+  }
+  try {
+    let finalUrl = '';
+    if (typeof window.uploadDashboardMediaFile === 'function') {
+      try {
+        finalUrl = await window.uploadDashboardMediaFile(file, { folder, kind: isVideo ? 'video' : 'image' });
+      } catch (err) {
+        console.warn('Cloud upload failed:', err);
+      }
+    }
+    if (!finalUrl) {
+      if (!isImage) {
+        showToast('Video upload needs Supabase Storage. Create the community-media bucket first.');
+        return;
+      }
+      if (file.size > 2 * 1024 * 1024) {
+        showToast('This image is large. Enable Supabase Storage for larger uploads.');
+        return;
+      }
+      finalUrl = await fileToDataUrl(file);
+    }
+    input.value = finalUrl;
+    setUploadPreview(previewId, finalUrl, `${file.name} • ${formatBytes(file.size)}`);
+    showToast(isVideo ? 'Video attached successfully' : 'Image attached successfully');
+  } catch (err) {
+    console.error(err);
+    showToast(String(err.message || err));
+  }
+}
+function initUploadWidgets() {
+  document.querySelectorAll('.upload-panel').forEach(panel => {
+    if (panel.dataset.bound === '1') return;
+    panel.dataset.bound = '1';
+    const inputId = panel.dataset.uploadTarget;
+    const previewId = panel.dataset.previewTarget;
+    const fileInputId = panel.dataset.fileInput;
+    const folder = panel.dataset.folder || 'general';
+    const kind = panel.dataset.uploadKind || 'image';
+    const fileInput = document.getElementById(fileInputId);
+    const dropzone = panel.querySelector('[data-role="dropzone"]');
+    if (!fileInput || !dropzone) return;
+    dropzone.addEventListener('click', () => fileInput.click());
+    dropzone.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInput.click(); }
+    });
+    fileInput.addEventListener('change', async e => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      await assignUploadedFileToInput(file, { inputId, previewId, folder, kind });
+      e.target.value = '';
+    });
+    ['dragenter','dragover'].forEach(evt => dropzone.addEventListener(evt, e => {
+      e.preventDefault();
+      dropzone.classList.add('drag-over');
+    }));
+    ['dragleave','dragend','drop'].forEach(evt => dropzone.addEventListener(evt, e => {
+      e.preventDefault();
+      dropzone.classList.remove('drag-over');
+    }));
+    dropzone.addEventListener('drop', async e => {
+      const file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+      if (!file) return;
+      await assignUploadedFileToInput(file, { inputId, previewId, folder, kind });
+    });
+    const input = document.getElementById(inputId);
+    if (input) input.addEventListener('input', () => {
+      const value = String(input.value || '').trim();
+      if (!value) setUploadPreview(previewId, '', '');
+      else if (!looksLikeLocalFilePath(value)) setUploadPreview(previewId, value, 'Current file');
+    });
+  });
+}
+window.syncUploadPreviewFromInput = syncUploadPreviewFromInput;
+window.looksLikeLocalFilePath = looksLikeLocalFilePath;
 function escapeHtml(str) { return (str || '').toString().replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch])); }
 function canViewLogs() { return typeof isMasterAdmin === 'function' && isMasterAdmin(); }
 function communityLinksHtml() {
@@ -685,7 +824,12 @@ document.getElementById('formEvent').addEventListener('submit', async e => {
   e.preventDefault();
   if (!adminMode()) return;
   const f = e.target;
-  const obj = { id: Date.now(), title: f.title.value.trim(), date: f.date.value, time: f.time.value, venue: f.venue.value, description: f.description.value, image: f.image.value, rsvp: 0 };
+  const imageValue = String(f.image.value || '').trim();
+  if (looksLikeLocalFilePath(imageValue)) {
+    showToast('Use the upload box for local files. PC file paths will not work.');
+    return;
+  }
+  const obj = { id: Date.now(), title: f.title.value.trim(), date: f.date.value, time: f.time.value, venue: f.venue.value, description: f.description.value, image: imageValue, rsvp: 0 };
   eventsData.push(obj);
   persistEventsLocal();
   if (typeof window.saveEventToCloud === 'function') {
@@ -780,7 +924,7 @@ function renderGallery() {
   page.innerHTML = `
     <div class="page-banner"><h2>Gallery</h2><p>Keep community memories organized by category with a cleaner visual layout and edit controls.</p></div>
     <div class="card cover-card">
-      <div class="section-title"><h2>Community moments</h2>${adminMode() ? '<button class="primary" onclick="openModal(\'modalPhoto\')">+ Add Photo</button>' : ''}</div>
+      <div class="section-title"><h2>Community moments</h2>${adminMode() ? '<button class="primary" onclick="openModal(\'modalPhoto\')">+ Add Media</button>' : ''}</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px" id="galFilters">${['All', 'Cultural', 'Sports', 'Academic', 'Community'].map(c => `<button class="pill ${c === 'All' ? 'active' : ''}" data-cat="${c}">${c}</button>`).join('')}</div>
       <div class="masonry" id="galGrid"></div>
     </div>`;
@@ -793,7 +937,7 @@ function renderGallery() {
     grid.innerHTML = list.length ? list.sort((a, b) => new Date(b.date) - new Date(a.date)).map(g => `
       <div class="masonry-item card gallery-card" style="padding:0;overflow:hidden">
         <button class="gallery-preview" type="button" data-action="open-lightbox" data-url="${escapeHtml(g.url)}" data-title="${escapeHtml(g.title || '')}" style="display:block;width:100%;padding:0;border:none;background:none;cursor:pointer">
-          <img src="${g.url}" alt="${escapeHtml(g.title || '')}" style="width:100%;display:block">
+          ${mediaPreviewHtml(g.url, g.title || '', { controls: false })}
         </button>
         <div style="padding:12px">
           <strong>${g.title}</strong>
@@ -819,7 +963,12 @@ document.getElementById('formPhoto').addEventListener('submit', async e => {
   e.preventDefault();
   if (!adminMode()) return;
   const f = e.target;
-  const obj = { id: Date.now(), title: f.title.value, date: f.date.value, category: f.category.value, url: f.url.value };
+  const mediaUrl = String(f.url.value || '').trim();
+  if (looksLikeLocalFilePath(mediaUrl)) {
+    showToast('Use the upload box for local files. PC file paths will not work.');
+    return;
+  }
+  const obj = { id: Date.now(), title: f.title.value, date: f.date.value, category: f.category.value, url: mediaUrl, mediaType: detectMediaType(mediaUrl) };
   galleryData.unshift(obj);
   persistGalleryLocal();
   if (typeof window.saveGalleryItemToCloud === 'function') {
@@ -837,8 +986,10 @@ document.getElementById('formPhoto').addEventListener('submit', async e => {
 
 function openLightbox(url, title) {
   const lb = document.getElementById('lightbox');
-  lb.querySelector('img').src = url;
-  lb.querySelector('img').alt = title;
+  const stage = document.getElementById('lightboxStage');
+  stage.innerHTML = mediaPreviewHtml(url, title, { controls: detectMediaType(url) === 'video' });
+  const media = stage.querySelector('img,video');
+  if (media) media.setAttribute('alt', title || '');
   lb.classList.add('active');
 }
 

@@ -32,7 +32,29 @@ function getAdminAccounts() {
   store.set(ADMIN_ACCOUNTS_KEY, defaults);
   return defaults;
 }
-function saveAdminAccounts(accounts) { store.set(ADMIN_ACCOUNTS_KEY, accounts); }
+function saveAdminAccounts(accounts) {
+  store.set(ADMIN_ACCOUNTS_KEY, accounts);
+  if (typeof window.saveAdminAccountsToCloud === 'function') {
+    window.saveAdminAccountsToCloud(accounts).then(saved => {
+      if (Array.isArray(saved) && saved.length) store.set(ADMIN_ACCOUNTS_KEY, saved);
+    }).catch(err => console.warn('Cloud admin account sync failed:', err));
+  }
+}
+async function refreshAdminAccountsFromCloud(forceUi = false) {
+  if (typeof window.loadAdminAccountsFromCloud !== 'function') return getAdminAccounts();
+  try {
+    const cloudAccounts = await window.loadAdminAccountsFromCloud();
+    if (Array.isArray(cloudAccounts) && cloudAccounts.length) {
+      store.set(ADMIN_ACCOUNTS_KEY, cloudAccounts);
+      if (forceUi && typeof renderAdminAccountsList === 'function') renderAdminAccountsList();
+      return cloudAccounts;
+    }
+  } catch (err) {
+    console.warn('Cloud admin account refresh failed:', err);
+  }
+  return getAdminAccounts();
+}
+window.refreshAdminAccountsFromCloud = refreshAdminAccountsFromCloud;
 function getAdminLogs() { return store.get(ADMIN_LOGS_KEY, []); }
 function saveAdminLogs(logs) { store.set(ADMIN_LOGS_KEY, logs); }
 function isMasterAdmin() { return !!(adminSession && adminSession.isMaster); }
@@ -126,6 +148,7 @@ document.getElementById('formAdminLogin').addEventListener('submit', async e => 
   e.preventDefault();
   const username = document.getElementById('adminUsernameInput').value.trim().toLowerCase();
   const pwd = document.getElementById('adminPwdInput').value;
+  await refreshAdminAccountsFromCloud(false);
   const pwdHash = await sha256(pwd);
   const account = getAdminAccounts().find(a => a.username.toLowerCase() === username && (a.passwordHash ? a.passwordHash === pwdHash : a.password === pwd));
   if (account) {
@@ -362,7 +385,8 @@ function openEditMember(id) {
   document.getElementById('editMemberIntakeYear').value = m.intakeYear || '';
   document.getElementById('editMemberPlace').value = m.place || '';
   document.getElementById('editMemberEmail').value = m.email || '';
-  document.getElementById('editMemberPhoto').value = (m.photo && !String(m.photo).startsWith('data:')) ? m.photo : '';
+  document.getElementById('editMemberPhoto').value = m.photo || '';
+  if (typeof window.syncUploadPreviewFromInput === 'function') window.syncUploadPreviewFromInput('editMemberPhoto', 'editMemberPhotoPreview', m.name || 'Member photo');
   document.getElementById('editMemberFacebook').value = m.facebook || '';
   document.getElementById('editMemberInstagram').value = m.instagram || '';
   document.getElementById('editMemberWhatsapp').value = m.whatsapp || '';
@@ -397,6 +421,10 @@ document.getElementById('formEditMember').addEventListener('submit', async e => 
     graduateYear: parseInt(f.querySelector('#editMemberGradYear').value, 10) || null
   };
   const photoValue = f.querySelector('#editMemberPhoto').value.trim();
+  if (looksLikeLocalFilePath(photoValue)) {
+    showToast('Use the upload box for local files. PC file paths will not work.');
+    return;
+  }
   if (photoValue) updatedMember.photo = photoValue;
   membersData[idx] = updatedMember;
   editingMemberId = formId;
@@ -454,6 +482,7 @@ function openEditEvent(id) {
   document.getElementById('editEventVenue').value = ev.venue || '';
   document.getElementById('editEventDesc').value = ev.description || '';
   document.getElementById('editEventImage').value = ev.image || '';
+  if (typeof window.syncUploadPreviewFromInput === 'function') window.syncUploadPreviewFromInput('editEventImage', 'editEventImagePreview', ev.title || 'Event image');
   openModal('modalEditEvent');
 }
 
@@ -471,6 +500,11 @@ document.getElementById('formEditEvent').addEventListener('submit', async e => {
     description: f.description.value,
     image: f.image.value.trim()
   });
+  if (looksLikeLocalFilePath(eventsData[idx].image)) {
+    showToast('Use the upload box for local files. PC file paths will not work.');
+    return;
+  }
+  eventsData[idx].image = String(eventsData[idx].image || '').trim();
   store.set('utp_events', eventsData);
   if (typeof window.saveEventToCloud === 'function') {
     try {
@@ -722,6 +756,7 @@ function openEditPhoto(id) {
   document.getElementById('editPhotoDate').value = g.date || '';
   document.getElementById('editPhotoCategory').value = g.category || 'Community';
   document.getElementById('editPhotoUrl').value = g.url || '';
+  if (typeof window.syncUploadPreviewFromInput === 'function') window.syncUploadPreviewFromInput('editPhotoUrl', 'editPhotoPreview', g.title || 'Gallery media');
   openModal('modalEditPhoto');
 }
 
@@ -735,8 +770,14 @@ document.getElementById('formEditPhoto').addEventListener('submit', async e => {
     title: f.title.value.trim(),
     date: f.date.value,
     category: f.category.value,
-    url: f.url.value.trim()
+    url: f.url.value.trim(),
+    mediaType: detectMediaType(f.url.value.trim())
   });
+  if (looksLikeLocalFilePath(galleryData[idx].url)) {
+    showToast('Use the upload box for local files. PC file paths will not work.');
+    return;
+  }
+  galleryData[idx].url = String(galleryData[idx].url || '').trim();
   store.set('utp_gallery', galleryData);
   if (typeof window.saveGalleryItemToCloud === 'function') {
     try {
@@ -885,3 +926,10 @@ window.openEditPhoto = openEditPhoto;
 window.deletePhotoEdit = deletePhotoEdit;
 window.addCommitteeMember = addCommitteeMember;
 window.addAlumniProfile = addAlumniProfile;
+
+
+document.addEventListener('DOMContentLoaded', () => {
+  setTimeout(() => {
+    if (typeof refreshAdminAccountsFromCloud === 'function') refreshAdminAccountsFromCloud(false);
+  }, 300);
+});

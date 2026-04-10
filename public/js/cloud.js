@@ -11,8 +11,10 @@
   const CONTENT_TABLES = {
     members: 'members_directory',
     events: 'events_board',
-    gallery: 'gallery_items'
+    gallery: 'gallery_items',
+    admins: 'admin_accounts'
   };
+  const MEDIA_BUCKET = config.mediaBucket || 'community-media';
 
   function el(tag, attrs = {}, html = '') {
     const node = document.createElement(tag);
@@ -215,6 +217,7 @@
       await testAdminApiToken();
       if (typeof refreshConcernsFromCloud === 'function') refreshConcernsFromCloud(true);
       if (typeof refreshDirectoryMediaFromCloud === 'function') refreshDirectoryMediaFromCloud(true);
+      if (typeof refreshAdminAccountsFromCloud === 'function') refreshAdminAccountsFromCloud(false);
     } catch (err) {
       console.error('Supabase init failed:', err);
       state.ready = false;
@@ -241,6 +244,9 @@
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: CONTENT_TABLES.gallery }, () => {
         if (typeof refreshDirectoryMediaFromCloud === 'function') refreshDirectoryMediaFromCloud(true);
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: CONTENT_TABLES.admins }, () => {
+        if (typeof refreshAdminAccountsFromCloud === 'function') refreshAdminAccountsFromCloud(false);
       })
       .subscribe();
   }
@@ -315,12 +321,34 @@
   window.loadMembersFromCloud = () => loadPayloadCollection('members');
   window.loadEventsFromCloud = () => loadPayloadCollection('events');
   window.loadGalleryFromCloud = () => loadPayloadCollection('gallery');
+  window.loadAdminAccountsFromCloud = () => loadPayloadCollection('admins');
   window.saveMemberToCloud = item => savePayloadItem('members', item);
   window.saveEventToCloud = item => savePayloadItem('events', item);
   window.saveGalleryItemToCloud = item => savePayloadItem('gallery', item);
+  window.saveAdminAccountsToCloud = async items => {
+    if (!state.ready) return items;
+    const data = await adminContentApi('POST', 'admins', { collection: 'admins', items: (items || []).map(toPayloadRow) });
+    return Array.isArray(data.items) ? data.items.map(mapPayloadRow) : items;
+  };
   window.deleteMemberFromCloud = id => deletePayloadItem('members', id);
   window.deleteEventFromCloud = id => deletePayloadItem('events', id);
   window.deleteGalleryItemFromCloud = id => deletePayloadItem('gallery', id);
+  window.uploadDashboardMediaFile = async function (file, options = {}) {
+    if (!state.ready || !state.client) throw new Error('Supabase is not connected');
+    const folder = (options.folder || 'general').replace(/[^a-z0-9/_-]/gi, '-');
+    const ext = (file.name.split('.').pop() || 'bin').toLowerCase();
+    const safeBase = (file.name.replace(/\.[^.]+$/, '') || 'file').replace(/[^a-z0-9_-]/gi, '-').toLowerCase();
+    const path = `${folder}/${Date.now()}-${safeBase}.${ext}`;
+    const { error } = await state.client.storage.from(MEDIA_BUCKET).upload(path, file, {
+      cacheControl: '3600',
+      upsert: false,
+      contentType: file.type || undefined
+    });
+    if (error) throw error;
+    const { data } = state.client.storage.from(MEDIA_BUCKET).getPublicUrl(path);
+    if (!data || !data.publicUrl) throw new Error('Could not get public media URL');
+    return data.publicUrl;
+  };
 
   window.pushContentToCloud = async function () {
     if (!state.ready) {
@@ -343,6 +371,7 @@
       await adminContentApi('POST', 'gallery', { collection: 'gallery', items: (snapshot.gallery || []).map(toPayloadRow) });
       setContentCloudMessage('Content migration complete. Members, events, and gallery are now stored in Supabase.', 'success');
       if (typeof refreshDirectoryMediaFromCloud === 'function') refreshDirectoryMediaFromCloud(true);
+      if (typeof refreshAdminAccountsFromCloud === 'function') refreshAdminAccountsFromCloud(false);
     } catch (err) {
       setContentCloudMessage(String(err.message || err), 'warn');
     }
