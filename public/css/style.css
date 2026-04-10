@@ -486,3 +486,18 @@ input::placeholder,textarea::placeholder{color:#94a3b8}
   .brand-copy h1{white-space:normal}
   .brand-meta{gap:6px}
 }
+
+
+.upload-note{margin-top:6px;font-size:12px;color:var(--muted)}
+.upload-panel{margin-top:8px}
+.upload-dropzone{border:1.5px dashed #94a3b8;border-radius:14px;padding:16px;text-align:center;background:linear-gradient(180deg,#f8fbfc,#ffffff);cursor:pointer;transition:border-color .2s ease, background .2s ease, transform .2s ease}
+.upload-dropzone:hover,.upload-dropzone.drag-over{border-color:var(--green);background:#f0fbf7;transform:translateY(-1px)}
+.upload-preview{margin-top:10px;display:none;gap:10px;align-items:center;padding:10px 12px;border:1px solid #e2e8f0;border-radius:14px;background:#fff}
+.upload-preview.active{display:flex}
+.upload-preview img,.upload-preview video{width:72px;height:72px;object-fit:cover;border-radius:12px;background:#e2e8f0}
+.upload-preview .meta{min-width:0;flex:1}
+.upload-preview .meta strong{display:block;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.upload-preview .meta span{display:block;font-size:12px;color:var(--muted);margin-top:4px}
+.gallery-preview video{width:100%;display:block;background:#000}
+.lightbox-stage{max-width:92vw;max-height:90vh;display:flex;align-items:center;justify-content:center}
+.lightbox-stage img,.lightbox-stage video{max-width:92vw;max-height:90vh;border-radius:12px;background:#000}
