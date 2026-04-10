@@ -13,6 +13,48 @@ let achievementsData = store.get('utp_achievements', achievements);
 let galleryData = store.get('utp_gallery', gallery);
 let rsvps = store.get('utp_rsvps', {});
 const defaultConcerns = [];
+
+/* ===== Committee Message ===== */
+let committeeMessage = store.get('utp_committee_message', { text: '', author: '', active: false });
+window.getCommitteeMessage = () => committeeMessage;
+window.setCommitteeMessage = function(text, author, active) {
+  committeeMessage = { text: (text || '').trim(), author: (author || '').trim(), active: !!active };
+  store.set('utp_committee_message', committeeMessage);
+  renderHome();
+};
+
+/* ===== Themes ===== */
+const THEMES = [
+  { id: 'default',  label: 'Default Green',  emoji: '🟢' },
+  { id: 'ocean',    label: 'Ocean Blue',      emoji: '🔵' },
+  { id: 'midnight', label: 'Midnight Purple', emoji: '🟣' }
+];
+function applyTheme(id) {
+  THEMES.forEach(t => document.body.classList.remove('theme-' + t.id));
+  if (id && id !== 'default') document.body.classList.add('theme-' + id);
+  store.set('utp_theme', id || 'default');
+}
+(function() { applyTheme(store.get('utp_theme', 'default')); })();
+window.THEMES = THEMES;
+window.applyTheme = applyTheme;
+window.getCurrentTheme = () => store.get('utp_theme', 'default');
+
+/* ===== Hadith Pool ===== */
+const HADITH_POOL = [
+  { arabic: 'مَثَلُ المُؤْمِنِينَ فِي تَوَادِّهِمْ وَتَرَاحُمِهِمْ وَتَعَاطُفِهِمْ مَثَلُ الجَسَدِ', text: 'The example of the believers in their mutual love, mercy, and compassion is like that of a body — when one part suffers, the whole body responds with fever and sleeplessness.', source: 'Sahih al-Bukhari 6011 & Muslim 2586' },
+  { arabic: 'المُسْلِمُ أَخُو المُسْلِمِ لَا يَظْلِمُهُ وَلَا يُسْلِمُهُ', text: 'A Muslim is the brother of another Muslim. He neither oppresses him nor abandons him.', source: 'Sahih al-Bukhari 2442' },
+  { arabic: 'لَا يُؤْمِنُ أَحَدُكُمْ حَتَّى يُحِبَّ لِأَخِيهِ مَا يُحِبُّ لِنَفْسِهِ', text: 'None of you truly believes until he loves for his brother what he loves for himself.', source: 'Sahih al-Bukhari 13, Muslim 45' },
+  { arabic: 'الْمُؤْمِنُ لِلْمُؤْمِنِ كَالْبُنْيَانِ يَشُدُّ بَعْضُهُ بَعْضًا', text: 'The believer to another believer is like a building — each part strengthens the other.', source: 'Sahih al-Bukhari 481, Muslim 2585' },
+  { arabic: 'تَهَادَوْا تَحَابُّوا', text: 'Exchange gifts — it will nurture love between you.', source: 'Al-Adab al-Mufrad 594 (Hasan)' },
+  { arabic: 'أَفْشُوا السَّلَامَ بَيْنَكُمْ', text: 'Spread the greeting of peace among yourselves.', source: 'Sahih Muslim 54' },
+  { arabic: 'مَنْ كَانَ فِي حَاجَةِ أَخِيهِ كَانَ اللَّهُ فِي حَاجَتِهِ', text: 'Whoever fulfils the need of his brother, Allah will fulfil his need.', source: 'Sahih al-Bukhari 2442' },
+  { arabic: 'حَقُّ الْمُسْلِمِ عَلَى الْمُسْلِمِ سِتٌّ', text: 'The Muslim has six rights over another Muslim: greet him when you meet, accept his invitation, give him sincere advice, say "yarhamuk Allah" when he sneezes, visit him when sick, and follow his funeral.', source: 'Sahih Muslim 2162' },
+  { arabic: 'خَيْرُ النَّاسِ أَنْفَعُهُمْ لِلنَّاسِ', text: 'The best of people are those most beneficial to others.', source: 'Al-Mu'jam al-Awsat, classified Hasan' },
+  { arabic: 'إِنَّ اللَّهَ رَفِيقٌ يُحِبُّ الرِّفْقَ', text: 'Indeed Allah is gentle and loves gentleness in all matters.', source: 'Sahih al-Bukhari 6927' }
+];
+function randomHadith() {
+  return HADITH_POOL[Math.floor(Math.random() * HADITH_POOL.length)];
+}
 let concernsData = store.get('utp_concerns', defaultConcerns);
 if (!Array.isArray(concernsData)) concernsData = [];
 
@@ -447,6 +489,24 @@ function renderHome() {
         </div>
       </div>
     </div>
+
+    ${(() => {
+      const h = randomHadith();
+      return '<div class="hadith-box">'
+        + '<div class="hadith-label">📖 Hadith of the Day &ndash; Community &amp; Brotherhood</div>'
+        + '<div class="hadith-arabic">' + escapeHtml(h.arabic) + '</div>'
+        + '<div class="hadith-text">' + escapeHtml(h.text) + '</div>'
+        + '<div class="hadith-source">' + escapeHtml(h.source) + '</div>'
+        + '</div>';
+    })()}
+
+    ${committeeMessage && committeeMessage.active && committeeMessage.text
+      ? '<div class="committee-msg-box">'
+        + '<div class="msg-label">📢 Message from the Committee</div>'
+        + '<div class="msg-body">' + escapeHtml(committeeMessage.text) + '</div>'
+        + (committeeMessage.author ? '<div class="msg-author">&mdash; ' + escapeHtml(committeeMessage.author) + '</div>' : '')
+        + '</div>'
+      : ''}
 
     <div class="info-strip">
       <div class="card"><div class="section-kicker">Students</div><div class="stat"><div class="icon">🎓</div><div><div class="v">${ug}</div><div class="l">Undergraduate</div></div></div></div>

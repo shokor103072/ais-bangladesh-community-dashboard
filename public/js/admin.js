@@ -1108,3 +1108,67 @@ document.addEventListener('DOMContentLoaded', () => {
     if (typeof refreshAdminAccountsFromCloud === 'function') refreshAdminAccountsFromCloud(false);
   }, 300);
 });
+
+/* ===== Committee Message Editor ===== */
+function syncCommitteeMsgUI() {
+  const msg = typeof window.getCommitteeMessage === 'function' ? window.getCommitteeMessage() : null;
+  if (!msg) return;
+  const cb   = document.getElementById('committeeMsgActive');
+  const txt  = document.getElementById('committeeMsgText');
+  const auth = document.getElementById('committeeMsgAuthor');
+  if (cb)   cb.checked      = !!msg.active;
+  if (txt)  txt.value       = msg.text  || '';
+  if (auth) auth.value      = msg.author|| '';
+}
+window.saveCommitteeMessageForm = function() {
+  if (!isMasterAdmin()) return;
+  const cb   = document.getElementById('committeeMsgActive');
+  const txt  = document.getElementById('committeeMsgText');
+  const auth = document.getElementById('committeeMsgAuthor');
+  const status = document.getElementById('committeeMsgStatus');
+  if (!txt) return;
+  if (typeof window.setCommitteeMessage === 'function') {
+    window.setCommitteeMessage(txt.value, auth ? auth.value : '', cb ? cb.checked : false);
+  }
+  if (status) {
+    status.textContent = 'Saved · ' + new Date().toLocaleTimeString();
+    status.style.color = 'var(--green)';
+  }
+};
+
+/* ===== Theme Swatches (master admin only) ===== */
+function renderThemeSwatches() {
+  const row = document.getElementById('themeSwatchRow');
+  const label = document.getElementById('currentThemeLabel');
+  if (!row || typeof window.THEMES === 'undefined') return;
+  const current = typeof window.getCurrentTheme === 'function' ? window.getCurrentTheme() : 'default';
+  const colors = { default: '#006A4E', ocean: '#1565C0', midnight: '#7c3aed' };
+  row.innerHTML = window.THEMES.map(t => `
+    <button type="button" onclick="pickTheme('${t.id}')"
+      style="display:flex;align-items:center;gap:8px;padding:10px 16px;border-radius:12px;border:2px solid ${t.id===current?colors[t.id]:'#e2e8f0'};background:${t.id===current?colors[t.id]+'18':'#fff'};font-weight:700;cursor:pointer;transition:all .2s">
+      <span style="width:16px;height:16px;border-radius:50%;background:${colors[t.id]};display:inline-block"></span>
+      ${t.emoji} ${t.label}
+      ${t.id===current?' ✓':''}
+    </button>`).join('');
+  if (label) {
+    const cur = window.THEMES.find(t => t.id === current);
+    label.textContent = cur ? cur.label : 'Default Green';
+  }
+}
+window.pickTheme = function(id) {
+  if (!isMasterAdmin()) return;
+  if (typeof window.applyTheme === 'function') window.applyTheme(id);
+  renderThemeSwatches();
+  if (typeof showToast === 'function') showToast('Theme changed to ' + id);
+};
+
+/* Hook into syncAdminUI to populate these panels */
+const _origSyncAdminUI = typeof syncAdminUI === 'function' ? syncAdminUI : null;
+function syncAdminUIExtended() {
+  if (_origSyncAdminUI) _origSyncAdminUI();
+  if (isMasterAdmin()) {
+    syncCommitteeMsgUI();
+    renderThemeSwatches();
+  }
+}
+window.syncAdminUI = syncAdminUIExtended;
