@@ -5,8 +5,10 @@ const TABLES = {
   alumni: 'alumni_directory',
   events: 'events_board',
   gallery: 'gallery_items',
-  admins: 'admin_accounts'
+  admins: 'admin_accounts',
+  settings: 'site_settings'
 };
+const KEY_VALUE_COLLECTIONS = new Set(['settings']);
 
 function json(res, status, body) {
   res.statusCode = status;
@@ -87,11 +89,33 @@ module.exports = async (req, res) => {
       const rsp = await fetch(`${base}?select=*&order=updated_at.desc`, { headers: supabaseHeaders() });
       const txt = await rsp.text();
       if (!rsp.ok) return json(res, rsp.status, { ok: false, error: normalizeSupabaseError(table, txt) });
-      return json(res, 200, { ok: true, items: JSON.parse(txt || '[]') });
+      const rows = JSON.parse(txt || '[]');
+      if (KEY_VALUE_COLLECTIONS.has(collection)) {
+        // Return as { key: value } map for easy consumption
+        const map = {};
+        rows.forEach(r => { map[r.key] = r.value; });
+        return json(res, 200, { ok: true, settings: map, items: rows });
+      }
+      return json(res, 200, { ok: true, items: rows });
     }
 
     if (req.method === 'POST' || req.method === 'PUT') {
       const body = await readBody(req);
+
+      // Key-value settings upsert (uses text key, not bigint id)
+      if (KEY_VALUE_COLLECTIONS.has(collection) && body.key !== undefined) {
+        const settingRow = { key: String(body.key), value: body.value !== undefined ? body.value : {}, updated_at: new Date().toISOString() };
+        const rsp = await fetch(`${base}?on_conflict=key`, {
+          method: 'POST',
+          headers: supabaseHeaders({ 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates,return=representation' }),
+          body: JSON.stringify(settingRow)
+        });
+        const txt = await rsp.text();
+        if (!rsp.ok) return json(res, rsp.status, { ok: false, error: normalizeSupabaseError(table, txt) });
+        const parsed = JSON.parse(txt || '[]');
+        return json(res, 200, { ok: true, item: Array.isArray(parsed) ? parsed[0] : parsed });
+      }
+
       if (Array.isArray(body.items)) {
         const rows = dedupeRows(body.items);
         if (!rows.length) return json(res, 200, { ok: true, items: [], skipped: true, note: 'No valid rows — collection skipped.' });
