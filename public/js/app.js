@@ -49,7 +49,7 @@ const HADITH_POOL = [
   { arabic: 'أَفْشُوا السَّلَامَ بَيْنَكُمْ', text: 'Spread the greeting of peace among yourselves.', source: 'Sahih Muslim 54' },
   { arabic: 'مَنْ كَانَ فِي حَاجَةِ أَخِيهِ كَانَ اللَّهُ فِي حَاجَتِهِ', text: 'Whoever fulfils the need of his brother, Allah will fulfil his need.', source: 'Sahih al-Bukhari 2442' },
   { arabic: 'حَقُّ الْمُسْلِمِ عَلَى الْمُسْلِمِ سِتٌّ', text: 'The Muslim has six rights over another Muslim: greet him when you meet, accept his invitation, give him sincere advice, say "yarhamuk Allah" when he sneezes, visit him when sick, and follow his funeral.', source: 'Sahih Muslim 2162' },
-  { arabic: 'خَيْرُ النَّاسِ أَنْفَعُهُمْ لِلنَّاسِ', text: 'The best of people are those most beneficial to others.', source: 'Al-Mu'jam al-Awsat, classified Hasan' },
+  { arabic: 'خَيْرُ النَّاسِ أَنْفَعُهُمْ لِلنَّاسِ', text: 'The best of people are those most beneficial to others.', source: "Al-Mujam al-Awsat (Al-Tabarani), Hasan" },
   { arabic: 'إِنَّ اللَّهَ رَفِيقٌ يُحِبُّ الرِّفْقَ', text: 'Indeed Allah is gentle and loves gentleness in all matters.', source: 'Sahih al-Bukhari 6927' }
 ];
 function randomHadith() {
