@@ -40,15 +40,29 @@ async function readBody(req) {
 }
 
 function row(item) {
+  const id = Number(item && item.id);
   return {
-    id: Number(item.id),
-    payload: item.payload || item,
-    updated_at: item.updated_at || new Date().toISOString()
+    id,
+    payload: (item && item.payload) || item || {},
+    updated_at: (item && item.updated_at) || new Date().toISOString()
   };
+}
+
+function dedupeRows(items) {
+  const map = new Map();
+  for (const original of Array.isArray(items) ? items : []) {
+    const current = row(original);
+    if (!Number.isFinite(current.id) || current.id <= 0) continue;
+    map.set(current.id, current);
+  }
+  return Array.from(map.values());
 }
 
 function normalizeSupabaseError(table, txt) {
   const raw = String(txt || '');
+  if (raw.includes('21000') || raw.includes('cannot affect row a second time') || raw.includes('duplicate constrained values')) {
+    return 'Duplicate local IDs were found in the data you tried to publish. Use the latest dashboard package, then push again. If it still happens, refresh this browser and remove duplicate copied entries before publishing.';
+  }
   if (raw.includes('PGRST205') || raw.toLowerCase().includes(`public.${table}`.toLowerCase())) {
     if (table === 'admin_accounts') return 'Supabase table public.admin_accounts is missing. Run supabase/step8-admin-accounts.sql and redeploy.';
     if (table === 'committee_directory' || table === 'alumni_directory') return 'Supabase committee/alumni tables are missing. Run the updated supabase/step7-content-sync.sql and redeploy.';
@@ -79,7 +93,8 @@ module.exports = async (req, res) => {
     if (req.method === 'POST' || req.method === 'PUT') {
       const body = await readBody(req);
       if (Array.isArray(body.items)) {
-        const rows = body.items.map(row);
+        const rows = dedupeRows(body.items);
+        if (!rows.length) return json(res, 400, { ok: false, error: 'No valid rows to publish for this collection.' });
         const rsp = await fetch(`${base}?on_conflict=id`, {
           method: 'POST',
           headers: supabaseHeaders({ 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates,return=representation' }),
@@ -91,6 +106,7 @@ module.exports = async (req, res) => {
       }
 
       const item = row(body.item || body);
+      if (!Number.isFinite(item.id) || item.id <= 0) return json(res, 400, { ok: false, error: 'Invalid item id for publish.' });
       const rsp = await fetch(`${base}?on_conflict=id`, {
         method: 'POST',
         headers: supabaseHeaders({ 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates,return=representation' }),
