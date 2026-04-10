@@ -10,6 +10,8 @@
   const ADMIN_TOKEN_KEY = 'utp_admin_inbox_token';
   const CONTENT_TABLES = {
     members: 'members_directory',
+    committee: 'committee_directory',
+    alumni: 'alumni_directory',
     events: 'events_board',
     gallery: 'gallery_items',
     admins: 'admin_accounts'
@@ -81,6 +83,17 @@
     }
     box.className = `cloud-admin-notice ${tone}`;
     box.innerHTML = message;
+  }
+
+  function isMissingRelationError(err, table) {
+    const msg = String(err && (err.message || err.details || err.hint || err) || '');
+    return msg.includes('PGRST205') || (table && msg.toLowerCase().includes(`public.${table}`.toLowerCase())) || msg.toLowerCase().includes('schema cache');
+  }
+
+  function missingRelationMessage(table) {
+    if (table === CONTENT_TABLES.admins) return 'Supabase table public.admin_accounts is missing. Run supabase/step8-admin-accounts.sql, then redeploy or refresh.';
+    if (table === CONTENT_TABLES.committee || table === CONTENT_TABLES.alumni) return 'Supabase committee/alumni tables are missing. Run the updated supabase/step7-content-sync.sql, then redeploy or refresh.';
+    return `Supabase table public.${table} is missing. Run the latest SQL setup files, then refresh.`;
   }
 
   function mapConcernRow(row) {
@@ -211,7 +224,7 @@
       updateBadge('Cloud sync: live via Supabase', 'success');
       updateAdminNotice('<strong>Cloud sync is ON.</strong> Public concern submissions and trackable lookups use Supabase directly. Admin full inbox should use the secure Vercel API token below.', 'success');
       updateContentCloudChip('Supabase ready', 'success');
-      setContentCloudMessage('Members, events, and gallery can now be published to Supabase. Use “Push local content to Supabase” once after schema setup to migrate your existing browser data.', 'success');
+      setContentCloudMessage('Members, committee, alumni, events, gallery, and admin accounts can now be published to Supabase. Use “Push local content to Supabase” once after schema setup to migrate your existing browser data.', 'success');
       attachRealtime();
       updateAdminTokenUi();
       await testAdminApiToken();
@@ -239,6 +252,12 @@
       .on('postgres_changes', { event: '*', schema: 'public', table: CONTENT_TABLES.members }, () => {
         if (typeof refreshDirectoryMediaFromCloud === 'function') refreshDirectoryMediaFromCloud(true);
       })
+      .on('postgres_changes', { event: '*', schema: 'public', table: CONTENT_TABLES.committee }, () => {
+        if (typeof refreshDirectoryMediaFromCloud === 'function') refreshDirectoryMediaFromCloud(true);
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: CONTENT_TABLES.alumni }, () => {
+        if (typeof refreshDirectoryMediaFromCloud === 'function') refreshDirectoryMediaFromCloud(true);
+      })
       .on('postgres_changes', { event: '*', schema: 'public', table: CONTENT_TABLES.events }, () => {
         if (typeof refreshDirectoryMediaFromCloud === 'function') refreshDirectoryMediaFromCloud(true);
       })
@@ -256,7 +275,13 @@
     const table = CONTENT_TABLES[collection];
     if (!table) throw new Error(`Unknown collection: ${collection}`);
     const { data, error } = await state.client.from(table).select('*').order('updated_at', { ascending: false });
-    if (error) throw error;
+    if (error) {
+      if (isMissingRelationError(error, table)) {
+        console.warn(missingRelationMessage(table));
+        return [];
+      }
+      throw error;
+    }
     return Array.isArray(data) ? data.map(mapPayloadRow) : [];
   }
 
@@ -319,10 +344,14 @@
   };
 
   window.loadMembersFromCloud = () => loadPayloadCollection('members');
+  window.loadCommitteeFromCloud = () => loadPayloadCollection('committee');
+  window.loadAlumniFromCloud = () => loadPayloadCollection('alumni');
   window.loadEventsFromCloud = () => loadPayloadCollection('events');
   window.loadGalleryFromCloud = () => loadPayloadCollection('gallery');
   window.loadAdminAccountsFromCloud = () => loadPayloadCollection('admins');
   window.saveMemberToCloud = item => savePayloadItem('members', item);
+  window.saveCommitteeToCloud = item => savePayloadItem('committee', item);
+  window.saveAlumniToCloud = item => savePayloadItem('alumni', item);
   window.saveEventToCloud = item => savePayloadItem('events', item);
   window.saveGalleryItemToCloud = item => savePayloadItem('gallery', item);
   window.saveAdminAccountsToCloud = async items => {
@@ -331,6 +360,8 @@
     return Array.isArray(data.items) ? data.items.map(mapPayloadRow) : items;
   };
   window.deleteMemberFromCloud = id => deletePayloadItem('members', id);
+  window.deleteCommitteeFromCloud = id => deletePayloadItem('committee', id);
+  window.deleteAlumniFromCloud = id => deletePayloadItem('alumni', id);
   window.deleteEventFromCloud = id => deletePayloadItem('events', id);
   window.deleteGalleryItemFromCloud = id => deletePayloadItem('gallery', id);
   window.uploadDashboardMediaFile = async function (file, options = {}) {
@@ -365,14 +396,16 @@
       return;
     }
     try {
-      setContentCloudMessage('Publishing members, events, gallery, and admin accounts to Supabase...', 'muted');
+      setContentCloudMessage('Publishing members, committee, alumni, events, gallery, and admin accounts to Supabase...', 'muted');
       await adminContentApi('POST', 'members', { collection: 'members', items: (snapshot.members || []).map(toPayloadRow) });
+      await adminContentApi('POST', 'committee', { collection: 'committee', items: (snapshot.committee || []).map(toPayloadRow) });
+      await adminContentApi('POST', 'alumni', { collection: 'alumni', items: (snapshot.alumni || []).map(toPayloadRow) });
       await adminContentApi('POST', 'events', { collection: 'events', items: (snapshot.events || []).map(toPayloadRow) });
       await adminContentApi('POST', 'gallery', { collection: 'gallery', items: (snapshot.gallery || []).map(toPayloadRow) });
       if (Array.isArray(snapshot.adminAccounts) && snapshot.adminAccounts.length) {
         await adminContentApi('POST', 'admins', { collection: 'admins', items: (snapshot.adminAccounts || []).map(toPayloadRow) });
       }
-      setContentCloudMessage('Content migration complete. Members, events, gallery, and admin accounts are now stored in Supabase.', 'success');
+      setContentCloudMessage('Content migration complete. Members, committee, alumni, events, gallery, and admin accounts are now stored in Supabase.', 'success');
       if (typeof refreshDirectoryMediaFromCloud === 'function') refreshDirectoryMediaFromCloud(true);
       if (typeof refreshAdminAccountsFromCloud === 'function') refreshAdminAccountsFromCloud(false);
     } catch (err) {
@@ -382,7 +415,7 @@
 
   window.pullContentFromCloud = async function () {
     try {
-      setContentCloudMessage('Refreshing members, events, gallery, and admin accounts from Supabase...', 'muted');
+      setContentCloudMessage('Refreshing members, committee, alumni, events, gallery, and admin accounts from Supabase...', 'muted');
       if (typeof refreshDirectoryMediaFromCloud === 'function') await refreshDirectoryMediaFromCloud(true);
       if (typeof refreshAdminAccountsFromCloud === 'function') await refreshAdminAccountsFromCloud(false);
       setContentCloudMessage('Cloud content refreshed on this browser.', 'success');

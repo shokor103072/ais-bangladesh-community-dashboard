@@ -25,6 +25,14 @@ async function sha256(input) {
   return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
+window.getAdminAccountsSnapshot = function () { return getAdminAccounts(); };
+window.applyAdminAccountsSnapshot = function (accounts, forceUi = true) {
+  if (!Array.isArray(accounts)) return getAdminAccounts();
+  store.set(ADMIN_ACCOUNTS_KEY, accounts);
+  if (forceUi && typeof renderAdminAccountsList === 'function') renderAdminAccountsList();
+  return accounts;
+};
+
 function getAdminAccounts() {
   const existing = store.get(ADMIN_ACCOUNTS_KEY, null);
   if (Array.isArray(existing) && existing.length) return existing;
@@ -352,7 +360,7 @@ function clearAdminLogs() {
   showToast('Audit logs cleared');
 }
 
-function addCommitteeMember() {
+async function addCommitteeMember() {
   if (!isAdmin) return;
   const role = prompt('Committee role (example: Advisor, President, Vice President)');
   if (!role) return;
@@ -363,24 +371,37 @@ function addCommitteeMember() {
   const email = prompt('Email (optional)') || '';
   const phone = prompt('Phone (optional)') || '';
   const photo = prompt('Photo URL (optional)') || '';
-  committeeData.unshift({ id: Date.now(), role, name, gender: normalizedGender, email, phone, photo });
+  const newItem = { id: Date.now(), role, name, gender: normalizedGender, email, phone, photo };
+  committeeData.unshift(newItem);
   store.set('utp_committee', committeeData);
+  if (typeof window.saveCommitteeToCloud === 'function') {
+    try {
+      const saved = await window.saveCommitteeToCloud(newItem);
+      const idx = committeeData.findIndex(x => Number(x.id) === Number(newItem.id));
+      if (saved && idx >= 0) committeeData[idx] = saved;
+      store.set('utp_committee', committeeData);
+    } catch (err) { console.warn('Cloud committee save failed:', err); }
+  }
   logAction('Committee member added', `${name} • ${role}`);
   showToast('Committee member added');
   reRenderAll();
 }
-function confirmDeleteCommitteeMember(key) {
+async function confirmDeleteCommitteeMember(key) {
   if (!isAdmin) return;
   key = decodeURIComponent(String(key));
   const c = committeeData.find(x => String(x.id || x.role) === String(key));
   if (!confirm(`Delete committee record for "${c?.name || c?.role}"?`)) return;
+  const deleteId = c?.id;
   committeeData = committeeData.filter(x => String(x.id || x.role) !== String(key));
   store.set('utp_committee', committeeData);
+  if (deleteId && typeof window.deleteCommitteeFromCloud === 'function') {
+    try { await window.deleteCommitteeFromCloud(deleteId); } catch (err) { console.warn('Cloud committee delete failed:', err); }
+  }
   showToast('Committee profile deleted');
   reRenderAll();
 }
 
-function addAlumniProfile() {
+async function addAlumniProfile() {
   if (!isAdmin) return;
   const name = prompt('Alumni name');
   if (!name) return;
@@ -397,8 +418,17 @@ function addAlumniProfile() {
   const googleScholar = prompt('Google Scholar URL (optional)') || '';
   const researchGate = prompt('ResearchGate URL (optional)') || '';
   const website = prompt('Other social / website URL (optional)') || '';
-  alumniData.unshift({ id: Date.now(), name, batch, gender: normalizedGender, position, company, location, photo, linkedin, facebook, instagram, googleScholar, researchGate, website });
+  const newItem = { id: Date.now(), name, batch, gender: normalizedGender, position, company, location, photo, linkedin, facebook, instagram, googleScholar, researchGate, website };
+  alumniData.unshift(newItem);
   store.set('utp_alumni', alumniData);
+  if (typeof window.saveAlumniToCloud === 'function') {
+    try {
+      const saved = await window.saveAlumniToCloud(newItem);
+      const idx = alumniData.findIndex(x => Number(x.id) === Number(newItem.id));
+      if (saved && idx >= 0) alumniData[idx] = saved;
+      store.set('utp_alumni', alumniData);
+    } catch (err) { console.warn('Cloud alumni save failed:', err); }
+  }
   logAction('Alumni added', name);
   showToast('Alumni profile added');
   reRenderAll();
@@ -606,7 +636,7 @@ function openEditCommittee(key) {
   openModal('modalEditCommittee');
 }
 
-document.getElementById('formEditCommittee').addEventListener('submit', e => {
+document.getElementById('formEditCommittee').addEventListener('submit', async e => {
   e.preventDefault();
   if (!isAdmin || !editingCommitteeKey) return;
   const idx = committeeData.findIndex(x => String(x.id || x.role) === editingCommitteeKey);
@@ -621,16 +651,27 @@ document.getElementById('formEditCommittee').addEventListener('submit', e => {
   });
   if (f.photo.value.trim()) committeeData[idx].photo = f.photo.value.trim();
   store.set('utp_committee', committeeData);
+  if (typeof window.saveCommitteeToCloud === 'function') {
+    try {
+      const saved = await window.saveCommitteeToCloud(committeeData[idx]);
+      if (saved) committeeData[idx] = saved;
+      store.set('utp_committee', committeeData);
+    } catch (err) { console.warn('Cloud committee update failed:', err); }
+  }
   closeModal('modalEditCommittee');
   showToast('Committee profile updated');
   reRenderAll();
 });
-function deleteCommitteeMember() {
+async function deleteCommitteeMember() {
   if (!isAdmin || !editingCommitteeKey) return;
   const c = committeeData.find(x => String(x.id || x.role) === editingCommitteeKey);
   if (!confirm(`Delete committee record for "${c?.name}"?`)) return;
+  const deleteId = c?.id;
   committeeData = committeeData.filter(x => String(x.id || x.role) !== editingCommitteeKey);
   store.set('utp_committee', committeeData);
+  if (deleteId && typeof window.deleteCommitteeFromCloud === 'function') {
+    try { await window.deleteCommitteeFromCloud(deleteId); } catch (err) { console.warn('Cloud committee delete failed:', err); }
+  }
   closeModal('modalEditCommittee');
   showToast('Committee profile deleted');
   reRenderAll();
@@ -661,7 +702,7 @@ function openEditAlumni(key) {
   openModal('modalEditAlumni');
 }
 
-document.getElementById('formEditAlumni').addEventListener('submit', e => {
+document.getElementById('formEditAlumni').addEventListener('submit', async e => {
   e.preventDefault();
   if (!isAdmin || !editingAlumniKey) return;
   const idx = alumniData.findIndex(x => String(x.id || x.name) === editingAlumniKey);
@@ -683,16 +724,27 @@ document.getElementById('formEditAlumni').addEventListener('submit', e => {
   });
   if (f.photo.value.trim()) alumniData[idx].photo = f.photo.value.trim();
   store.set('utp_alumni', alumniData);
+  if (typeof window.saveAlumniToCloud === 'function') {
+    try {
+      const saved = await window.saveAlumniToCloud(alumniData[idx]);
+      if (saved) alumniData[idx] = saved;
+      store.set('utp_alumni', alumniData);
+    } catch (err) { console.warn('Cloud alumni update failed:', err); }
+  }
   closeModal('modalEditAlumni');
   showToast('Alumni profile updated');
   reRenderAll();
 });
-function deleteAlumni() {
+async function deleteAlumni() {
   if (!isAdmin || !editingAlumniKey) return;
   const a = alumniData.find(x => String(x.id || x.name) === editingAlumniKey);
   if (!confirm(`Delete alumni record for "${a?.name}"?`)) return;
+  const deleteId = a?.id;
   alumniData = alumniData.filter(x => String(x.id || x.name) !== editingAlumniKey);
   store.set('utp_alumni', alumniData);
+  if (deleteId && typeof window.deleteAlumniFromCloud === 'function') {
+    try { await window.deleteAlumniFromCloud(deleteId); } catch (err) { console.warn('Cloud alumni delete failed:', err); }
+  }
   closeModal('modalEditAlumni');
   showToast('Alumni profile deleted');
   reRenderAll();

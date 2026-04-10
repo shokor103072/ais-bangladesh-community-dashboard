@@ -61,24 +61,36 @@ async function saveConcernItem(item, options = {}) {
 }
 
 function persistMembersLocal() { store.set('utp_members', membersData); }
+function persistCommitteeLocal() { store.set('utp_committee', committeeData); }
+function persistAlumniLocal() { store.set('utp_alumni', alumniData); }
 function persistEventsLocal() { store.set('utp_events', eventsData); }
 function persistGalleryLocal() { store.set('utp_gallery', galleryData); }
 
 window.getCloudContentSnapshot = function () {
   return {
     members: Array.isArray(membersData) ? membersData : [],
+    committee: Array.isArray(committeeData) ? committeeData : [],
+    alumni: Array.isArray(alumniData) ? alumniData : [],
     events: Array.isArray(eventsData) ? eventsData : [],
-    gallery: Array.isArray(galleryData) ? galleryData : []
+    gallery: Array.isArray(galleryData) ? galleryData : [],
+    adminAccounts: typeof window.getAdminAccountsSnapshot === 'function' ? window.getAdminAccountsSnapshot() : []
   };
 };
 
 window.applyCloudContentSnapshot = function (payload = {}, forceRender = true) {
   if (Array.isArray(payload.members)) { membersData = payload.members; persistMembersLocal(); }
+  if (Array.isArray(payload.committee)) { committeeData = payload.committee; persistCommitteeLocal(); }
+  if (Array.isArray(payload.alumni)) { alumniData = payload.alumni; persistAlumniLocal(); }
   if (Array.isArray(payload.events)) { eventsData = payload.events; persistEventsLocal(); }
   if (Array.isArray(payload.gallery)) { galleryData = payload.gallery; persistGalleryLocal(); }
+  if (Array.isArray(payload.adminAccounts) && typeof window.applyAdminAccountsSnapshot === 'function') {
+    window.applyAdminAccountsSnapshot(payload.adminAccounts, false);
+  }
   if (forceRender) {
     renderHome();
     renderMembers();
+    renderCommittee();
+    renderAlumni();
     renderEvents();
     renderGallery();
     renderOnboarding();
@@ -92,6 +104,20 @@ async function refreshDirectoryMediaFromCloud(forceRender = true) {
       if (Array.isArray(cloudMembers) && (cloudMembers.length || !membersData.length)) {
         membersData = cloudMembers;
         persistMembersLocal();
+      }
+    }
+    if (typeof window.loadCommitteeFromCloud === 'function') {
+      const cloudCommittee = await window.loadCommitteeFromCloud();
+      if (Array.isArray(cloudCommittee) && (cloudCommittee.length || !committeeData.length)) {
+        committeeData = cloudCommittee;
+        persistCommitteeLocal();
+      }
+    }
+    if (typeof window.loadAlumniFromCloud === 'function') {
+      const cloudAlumni = await window.loadAlumniFromCloud();
+      if (Array.isArray(cloudAlumni) && (cloudAlumni.length || !alumniData.length)) {
+        alumniData = cloudAlumni;
+        persistAlumniLocal();
       }
     }
     if (typeof window.loadEventsFromCloud === 'function') {
@@ -111,6 +137,8 @@ async function refreshDirectoryMediaFromCloud(forceRender = true) {
     if (forceRender) {
       renderHome();
       renderMembers();
+      renderCommittee();
+      renderAlumni();
       renderEvents();
       renderGallery();
       renderOnboarding();
