@@ -1,6 +1,8 @@
 const REQUIRED = ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'ADMIN_INBOX_TOKEN'];
 const TABLES = {
   members: 'members_directory',
+  committee: 'committee_directory',
+  alumni: 'alumni_directory',
   events: 'events_board',
   gallery: 'gallery_items',
   admins: 'admin_accounts'
@@ -45,6 +47,16 @@ function row(item) {
   };
 }
 
+function normalizeSupabaseError(table, txt) {
+  const raw = String(txt || '');
+  if (raw.includes('PGRST205') || raw.toLowerCase().includes(`public.${table}`.toLowerCase())) {
+    if (table === 'admin_accounts') return 'Supabase table public.admin_accounts is missing. Run supabase/step8-admin-accounts.sql and redeploy.';
+    if (table === 'committee_directory' || table === 'alumni_directory') return 'Supabase committee/alumni tables are missing. Run the updated supabase/step7-content-sync.sql and redeploy.';
+    return `Supabase table public.${table} is missing. Run the latest SQL setup files and redeploy.`;
+  }
+  return raw;
+}
+
 module.exports = async (req, res) => {
   const missing = REQUIRED.filter(k => !process.env[k]);
   if (missing.length) return json(res, 500, { ok: false, error: `Missing env vars: ${missing.join(', ')}` });
@@ -60,7 +72,7 @@ module.exports = async (req, res) => {
     if (req.method === 'GET') {
       const rsp = await fetch(`${base}?select=*&order=updated_at.desc`, { headers: supabaseHeaders() });
       const txt = await rsp.text();
-      if (!rsp.ok) return json(res, rsp.status, { ok: false, error: txt });
+      if (!rsp.ok) return json(res, rsp.status, { ok: false, error: normalizeSupabaseError(table, txt) });
       return json(res, 200, { ok: true, items: JSON.parse(txt || '[]') });
     }
 
@@ -74,7 +86,7 @@ module.exports = async (req, res) => {
           body: JSON.stringify(rows)
         });
         const txt = await rsp.text();
-        if (!rsp.ok) return json(res, rsp.status, { ok: false, error: txt });
+        if (!rsp.ok) return json(res, rsp.status, { ok: false, error: normalizeSupabaseError(table, txt) });
         return json(res, 200, { ok: true, items: JSON.parse(txt || '[]') });
       }
 
@@ -85,7 +97,7 @@ module.exports = async (req, res) => {
         body: JSON.stringify(item)
       });
       const txt = await rsp.text();
-      if (!rsp.ok) return json(res, rsp.status, { ok: false, error: txt });
+      if (!rsp.ok) return json(res, rsp.status, { ok: false, error: normalizeSupabaseError(table, txt) });
       const parsed = JSON.parse(txt || '[]');
       return json(res, 200, { ok: true, item: Array.isArray(parsed) ? parsed[0] : parsed });
     }
@@ -99,7 +111,7 @@ module.exports = async (req, res) => {
         headers: supabaseHeaders({ Prefer: 'return=minimal' })
       });
       const txt = await rsp.text();
-      if (!rsp.ok) return json(res, rsp.status, { ok: false, error: txt });
+      if (!rsp.ok) return json(res, rsp.status, { ok: false, error: normalizeSupabaseError(table, txt) });
       return json(res, 200, { ok: true });
     }
 
