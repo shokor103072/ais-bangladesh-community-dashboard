@@ -557,3 +557,14 @@ body.theme-midnight .hadith-box .hadith-source{color:#c9a830}
 /* Hadith Bangla translation line */
 .hadith-bangla{font-size:13px;line-height:1.7;color:#5a3e00;margin:4px 0 8px;padding:6px 10px;background:rgba(255,215,0,.1);border-radius:8px;font-family:inherit}
 body.theme-midnight .hadith-bangla{background:rgba(255,215,0,.07);color:#d4a800}
+
+
+/* ===== EVENT PAGE SETTINGS BOXES ===== */
+.event-settings-form{margin-top:14px;padding-top:14px;border-top:1px solid rgba(148,163,184,.22)}
+.event-settings-form textarea{min-height:120px;resize:vertical}
+.event-settings-form input,.event-settings-form textarea{margin-top:8px}
+.event-settings-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px}
+.event-settings-toggle{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);padding:0 4px}
+.event-settings-display{margin-bottom:10px}
+.event-settings-empty{padding:18px 14px}
+@media (max-width: 900px){.event-settings-grid{grid-template-columns:1fr}}

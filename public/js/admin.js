@@ -253,7 +253,7 @@ function fillAdminSettingsForm() {
 
 document.getElementById('adminSettingsBtn')?.addEventListener('click', () => setTimeout(fillAdminSettingsForm, 50));
 
-document.getElementById('formCommunityVisibility')?.addEventListener('submit', async e => {
+document.getElementById('formCommunityVisibility')?.addEventListener('submit', e => {
   e.preventDefault();
   if (!isAdmin) return;
   const visibility = {
@@ -283,11 +283,7 @@ document.getElementById('formCommunityVisibility')?.addEventListener('submit', a
   store.set(ONBOARD_STEPS_KEY, onboardSteps);
   store.set(FAQ_KEY, faqData);
   if (typeof window.saveSiteSettingToCloud === 'function') {
-    try {
-      await window.saveSiteSettingToCloud('community_links', communityLinksData);
-    } catch (e) {
-      console.warn('Community links cloud save failed:', e);
-    }
+    window.saveSiteSettingToCloud('community_links', communityLinksData).catch(e => console.warn('Community links cloud save failed:', e));
   }
   logAction('Public settings updated', 'Visibility, links, onboarding, or FAQ changed');
   showToast('Public settings updated');
@@ -1127,7 +1123,7 @@ function syncCommitteeMsgUI() {
   if (txt)  txt.value       = msg.text  || '';
   if (auth) auth.value      = msg.author|| '';
 }
-window.saveCommitteeMessageForm = async function() {
+window.saveCommitteeMessageForm = function() {
   if (!isMasterAdmin()) return;
   const cb   = document.getElementById('committeeMsgActive');
   const txt  = document.getElementById('committeeMsgText');
@@ -1135,7 +1131,7 @@ window.saveCommitteeMessageForm = async function() {
   const status = document.getElementById('committeeMsgStatus');
   if (!txt) return;
   if (typeof window.setCommitteeMessage === 'function') {
-    await window.setCommitteeMessage(txt.value, auth ? auth.value : '', cb ? cb.checked : false);
+    window.setCommitteeMessage(txt.value, auth ? auth.value : '', cb ? cb.checked : false);
   }
   if (status) {
     status.textContent = 'Saved · ' + new Date().toLocaleTimeString();

@@ -17,18 +17,24 @@ const defaultConcerns = [];
 /* ===== Committee Message ===== */
 let committeeMessage = store.get('utp_committee_message', { text: '', author: '', active: false });
 window.getCommitteeMessage = () => committeeMessage;
-window.setCommitteeMessage = async function(text, author, active) {
+window.setCommitteeMessage = function(text, author, active) {
   committeeMessage = { text: (text || '').trim(), author: (author || '').trim(), active: !!active };
   store.set('utp_committee_message', committeeMessage);
   if (typeof window.saveSiteSettingToCloud === 'function') {
-    try {
-      await window.saveSiteSettingToCloud('committee_message', committeeMessage);
-    } catch (e) {
-      console.warn('Settings cloud save failed:', e);
-    }
+    window.saveSiteSettingToCloud('committee_message', committeeMessage).catch(e => console.warn('Settings cloud save failed:', e));
   }
   renderHome();
-  return committeeMessage;
+  renderEvents();
+};
+
+window.setCommunityLinks = function(links) {
+  communityLinksData = { ...defaultCommunityLinks, ...(links || {}) };
+  store.set('utp_community_links', communityLinksData);
+  if (typeof window.saveSiteSettingToCloud === 'function') {
+    window.saveSiteSettingToCloud('community_links', communityLinksData).catch(e => console.warn('Community links cloud save failed:', e));
+  }
+  renderHome();
+  renderEvents();
 };
 
 /* ===== Cloud settings refresh ===== */
@@ -48,7 +54,7 @@ window.refreshSiteSettingsFromCloud = async function () {
       store.set('utp_committee_message', committeeMessage);
       changed = true;
     }
-    if (changed) { renderHome(); }
+    if (changed) { renderHome(); renderEvents(); }
   } catch (e) { console.warn('refreshSiteSettingsFromCloud failed:', e); }
 };
 
@@ -330,6 +336,9 @@ async function refreshDirectoryMediaFromCloud(forceRender = true) {
         persistGalleryLocal();
       }
     }
+    if (typeof window.refreshSiteSettingsFromCloud === 'function') {
+      await window.refreshSiteSettingsFromCloud();
+    }
     if (forceRender) {
       renderHome();
       renderMembers();
@@ -582,6 +591,21 @@ function communityLinksHtml() {
   ].filter(Boolean);
   return links.length ? links.join('') : '<span class="muted">Community links will appear here after admin setup.</span>';
 }
+function committeeMessageBoxHtml(showEmpty = true) {
+  if (committeeMessage && committeeMessage.active && committeeMessage.text) {
+    return '<div class="committee-msg-box event-settings-display">'
+      + '<div class="msg-label">📢 Message from the Committee</div>'
+      + '<div class="msg-body">' + escapeHtml(committeeMessage.text) + '</div>'
+      + (committeeMessage.author ? '<div class="msg-author">&mdash; ' + escapeHtml(committeeMessage.author) + '</div>' : '')
+      + '</div>';
+  }
+  return showEmpty ? '<div class="empty-state event-settings-empty">No active community message yet.</div>' : '';
+}
+
+function communityLinksEditorPreviewHtml() {
+  return communityLinksHtml();
+}
+
 function topDepartments(limit = 4) {
   const counts = membersData.reduce((acc, m) => {
     acc[m.department] = (acc[m.department] || 0) + 1;
@@ -655,13 +679,7 @@ function renderHome() {
         + '</div>';
     })()}
 
-    ${committeeMessage && committeeMessage.active && committeeMessage.text
-      ? '<div class="committee-msg-box">'
-        + '<div class="msg-label">📢 Message from the Committee</div>'
-        + '<div class="msg-body">' + escapeHtml(committeeMessage.text) + '</div>'
-        + (committeeMessage.author ? '<div class="msg-author">&mdash; ' + escapeHtml(committeeMessage.author) + '</div>' : '')
-        + '</div>'
-      : ''}
+    ${committeeMessageBoxHtml(false)}
 
     <div class="info-strip">
       <div class="card"><div class="section-kicker">Students</div><div class="stat"><div class="icon">🎓</div><div><div class="v">${ug}</div><div class="l">Undergraduate</div></div></div></div>
@@ -1026,6 +1044,40 @@ function renderEvents() {
         <div class="section-title"><h2>Announcements</h2>${adminMode() ? '<button class="primary" onclick="openModal(\'modalAnnounce\')">+ Add</button>' : ''}</div>
         <div class="list" id="annList"></div>
       </div>
+    </div>
+    <div class="grid grid-2" style="margin-top:14px">
+      <div class="card cover-card">
+        <div class="section-title"><h2>💬 Community message</h2><span class="chip">Home banner</span></div>
+        <div id="eventsCommunityMessageBox">${committeeMessageBoxHtml(true)}</div>
+        ${adminMode() ? `
+          <form id="eventCommitteeMessageForm" class="event-settings-form">
+            <div class="section-kicker">Edit from Events page</div>
+            <textarea name="text" rows="5" placeholder="Write a community message for the home page...">${escapeHtml(committeeMessage.text || '')}</textarea>
+            <div class="event-settings-grid">
+              <input type="text" name="author" placeholder="Author / role" value="${escapeHtml(committeeMessage.author || '')}">
+              <label class="event-settings-toggle"><input type="checkbox" id="eventCommitteeMessageActive" ${committeeMessage.active ? 'checked' : ''}> Show on home page</label>
+            </div>
+            <div class="inline-metrics">
+              <button class="primary" type="submit">Save message</button>
+              <span class="muted">Any admin update here will also appear on Home.</span>
+            </div>
+          </form>` : ''}
+      </div>
+      <div class="card cover-card">
+        <div class="section-title"><h2>🔗 Quick links</h2><span class="chip">Home shortcuts</span></div>
+        <div class="inline-metrics" id="eventsQuickLinksBox">${communityLinksEditorPreviewHtml()}</div>
+        ${adminMode() ? `
+          <form id="eventQuickLinksForm" class="event-settings-form">
+            <div class="section-kicker">Edit from Events page</div>
+            <input type="url" name="whatsapp" placeholder="WhatsApp link" value="${escapeHtml(communityLinksData.whatsapp || '')}">
+            <input type="url" name="facebook" placeholder="Facebook link" value="${escapeHtml(communityLinksData.facebook || '')}">
+            <input type="url" name="instagram" placeholder="Instagram link" value="${escapeHtml(communityLinksData.instagram || '')}">
+            <div class="inline-metrics">
+              <button class="primary" type="submit">Save quick links</button>
+              <span class="muted">These links sync to the Home page automatically.</span>
+            </div>
+          </form>` : ''}
+      </div>
     </div>`;
 
   page.querySelector('#eventsList').innerHTML = [...eventsData].sort((a, b) => new Date(a.date) - new Date(b.date)).map(e => {
@@ -1057,6 +1109,33 @@ function renderEvents() {
       <div style="margin-top:8px">${a.content}</div>
       <div class="admin-actions"><button class="btn-edit" data-action="edit-announcement" data-id="${a.id}" type="button">✏️ Edit</button><button class="btn-delete" data-action="delete-announcement" data-id="${a.id}" type="button">🗑️ Delete</button></div>
     </div>`).join('') || `<div class="empty-state">No announcements available.</div>`;
+
+  const messageForm = page.querySelector('#eventCommitteeMessageForm');
+  if (messageForm) {
+    messageForm.addEventListener('submit', e => {
+      e.preventDefault();
+      if (!adminMode()) return;
+      const text = String(messageForm.text.value || '').trim();
+      const author = String(messageForm.author.value || '').trim();
+      const active = !!page.querySelector('#eventCommitteeMessageActive')?.checked;
+      window.setCommitteeMessage(text, author, active);
+      showToast('Community message updated');
+    });
+  }
+
+  const quickLinksForm = page.querySelector('#eventQuickLinksForm');
+  if (quickLinksForm) {
+    quickLinksForm.addEventListener('submit', e => {
+      e.preventDefault();
+      if (!adminMode()) return;
+      window.setCommunityLinks({
+        whatsapp: String(quickLinksForm.whatsapp.value || '').trim(),
+        facebook: String(quickLinksForm.facebook.value || '').trim(),
+        instagram: String(quickLinksForm.instagram.value || '').trim()
+      });
+      showToast('Quick links updated');
+    });
+  }
 
   page.addEventListener('click', (event) => {
     const button = event.target.closest('button[data-action]');
