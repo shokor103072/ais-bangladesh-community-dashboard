@@ -410,22 +410,43 @@
       return;
     }
     try {
-      const cleanMembers = dedupeItemsById(snapshot.members || [], 'members');
-      const cleanCommittee = dedupeItemsById(snapshot.committee || [], 'committee');
-      const cleanAlumni = dedupeItemsById(snapshot.alumni || [], 'alumni');
-      const cleanEvents = dedupeItemsById(snapshot.events || [], 'events');
-      const cleanGallery = dedupeItemsById(snapshot.gallery || [], 'gallery items');
-      const cleanAdmins = dedupeItemsById(snapshot.adminAccounts || [], 'admin accounts');
-      setContentCloudMessage('Publishing members, committee, alumni, events, gallery, and admin accounts to Supabase...', 'muted');
-      await adminContentApi('POST', 'members', { collection: 'members', items: cleanMembers.map(toPayloadRow) });
-      await adminContentApi('POST', 'committee', { collection: 'committee', items: cleanCommittee.map(toPayloadRow) });
-      await adminContentApi('POST', 'alumni', { collection: 'alumni', items: cleanAlumni.map(toPayloadRow) });
-      await adminContentApi('POST', 'events', { collection: 'events', items: cleanEvents.map(toPayloadRow) });
-      await adminContentApi('POST', 'gallery', { collection: 'gallery', items: cleanGallery.map(toPayloadRow) });
-      if (cleanAdmins.length) {
-        await adminContentApi('POST', 'admins', { collection: 'admins', items: cleanAdmins.map(toPayloadRow) });
+      const collections = [
+        { key: 'members',   label: 'members',        items: dedupeItemsById(snapshot.members || [], 'members') },
+        { key: 'committee', label: 'committee',       items: dedupeItemsById(snapshot.committee || [], 'committee') },
+        { key: 'alumni',    label: 'alumni',          items: dedupeItemsById(snapshot.alumni || [], 'alumni') },
+        { key: 'events',    label: 'events',          items: dedupeItemsById(snapshot.events || [], 'events') },
+        { key: 'gallery',   label: 'gallery items',   items: dedupeItemsById(snapshot.gallery || [], 'gallery items') },
+        { key: 'admins',    label: 'admin accounts',  items: dedupeItemsById(snapshot.adminAccounts || [], 'admin accounts') },
+      ];
+
+      const toSync = collections.filter(c => c.items.length > 0);
+      if (!toSync.length) {
+        setContentCloudMessage('Nothing to publish — no local data found. Add members, events, or gallery items first, then push again.', 'warn');
+        return;
       }
-      setContentCloudMessage('Content migration complete. Members, committee, alumni, events, gallery, and admin accounts are now stored in Supabase.', 'success');
+
+      const labels = toSync.map(c => c.label).join(', ');
+      setContentCloudMessage(`Publishing ${labels} to Supabase…`, 'muted');
+
+      const errors = [];
+      for (const col of toSync) {
+        try {
+          await adminContentApi('POST', col.key, { collection: col.key, items: col.items.map(toPayloadRow) });
+        } catch (err) {
+          errors.push(`${col.label}: ${String(err.message || err)}`);
+        }
+      }
+
+      if (errors.length) {
+        const succeeded = toSync.length - errors.length;
+        const msg = succeeded
+          ? `Partially published (${succeeded}/${toSync.length} collections). Errors — ${errors.join(' | ')}`
+          : `Publish failed — ${errors.join(' | ')}`;
+        setContentCloudMessage(msg, 'warn');
+      } else {
+        setContentCloudMessage(`Content published (${toSync.length} collection${toSync.length !== 1 ? 's' : ''}). All devices will now read from Supabase.`, 'success');
+      }
+
       if (typeof refreshDirectoryMediaFromCloud === 'function') refreshDirectoryMediaFromCloud(true);
       if (typeof refreshAdminAccountsFromCloud === 'function') refreshAdminAccountsFromCloud(false);
     } catch (err) {
