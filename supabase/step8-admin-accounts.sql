@@ -13,4 +13,6 @@ create policy "admin_accounts_public_read"
   to anon, authenticated
   using (true);
 
-alter publication supabase_realtime add table public.admin_accounts;
+do $$ begin
+  alter publication supabase_realtime add table public.admin_accounts;
+exception when duplicate_object then null; end $$;
