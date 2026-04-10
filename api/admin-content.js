@@ -94,7 +94,7 @@ module.exports = async (req, res) => {
       const body = await readBody(req);
       if (Array.isArray(body.items)) {
         const rows = dedupeRows(body.items);
-        if (!rows.length) return json(res, 400, { ok: false, error: 'No valid rows to publish for this collection.' });
+        if (!rows.length) return json(res, 200, { ok: true, items: [], skipped: true, note: 'No valid rows — collection skipped.' });
         const rsp = await fetch(`${base}?on_conflict=id`, {
           method: 'POST',
           headers: supabaseHeaders({ 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates,return=representation' }),
