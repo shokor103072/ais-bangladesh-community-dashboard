@@ -41,16 +41,141 @@ window.getCurrentTheme = () => store.get('utp_theme', 'default');
 
 /* ===== Hadith Pool ===== */
 const HADITH_POOL = [
-  { arabic: 'مَثَلُ المُؤْمِنِينَ فِي تَوَادِّهِمْ وَتَرَاحُمِهِمْ وَتَعَاطُفِهِمْ مَثَلُ الجَسَدِ', text: 'The example of the believers in their mutual love, mercy, and compassion is like that of a body — when one part suffers, the whole body responds with fever and sleeplessness.', source: 'Sahih al-Bukhari 6011 & Muslim 2586' },
-  { arabic: 'المُسْلِمُ أَخُو المُسْلِمِ لَا يَظْلِمُهُ وَلَا يُسْلِمُهُ', text: 'A Muslim is the brother of another Muslim. He neither oppresses him nor abandons him.', source: 'Sahih al-Bukhari 2442' },
-  { arabic: 'لَا يُؤْمِنُ أَحَدُكُمْ حَتَّى يُحِبَّ لِأَخِيهِ مَا يُحِبُّ لِنَفْسِهِ', text: 'None of you truly believes until he loves for his brother what he loves for himself.', source: 'Sahih al-Bukhari 13, Muslim 45' },
-  { arabic: 'الْمُؤْمِنُ لِلْمُؤْمِنِ كَالْبُنْيَانِ يَشُدُّ بَعْضُهُ بَعْضًا', text: 'The believer to another believer is like a building — each part strengthens the other.', source: 'Sahih al-Bukhari 481, Muslim 2585' },
-  { arabic: 'تَهَادَوْا تَحَابُّوا', text: 'Exchange gifts — it will nurture love between you.', source: 'Al-Adab al-Mufrad 594 (Hasan)' },
-  { arabic: 'أَفْشُوا السَّلَامَ بَيْنَكُمْ', text: 'Spread the greeting of peace among yourselves.', source: 'Sahih Muslim 54' },
-  { arabic: 'مَنْ كَانَ فِي حَاجَةِ أَخِيهِ كَانَ اللَّهُ فِي حَاجَتِهِ', text: 'Whoever fulfils the need of his brother, Allah will fulfil his need.', source: 'Sahih al-Bukhari 2442' },
-  { arabic: 'حَقُّ الْمُسْلِمِ عَلَى الْمُسْلِمِ سِتٌّ', text: 'The Muslim has six rights over another Muslim: greet him when you meet, accept his invitation, give him sincere advice, say "yarhamuk Allah" when he sneezes, visit him when sick, and follow his funeral.', source: 'Sahih Muslim 2162' },
-  { arabic: 'خَيْرُ النَّاسِ أَنْفَعُهُمْ لِلنَّاسِ', text: 'The best of people are those most beneficial to others.', source: "Al-Mujam al-Awsat (Al-Tabarani), Hasan" },
-  { arabic: 'إِنَّ اللَّهَ رَفِيقٌ يُحِبُّ الرِّفْقَ', text: 'Indeed Allah is gentle and loves gentleness in all matters.', source: 'Sahih al-Bukhari 6927' }
+  /* ── Community & Brotherhood ── */
+  {
+    arabic: 'مَثَلُ المُؤْمِنِينَ فِي تَوَادِّهِمْ وَتَرَاحُمِهِمْ وَتَعَاطُفِهِمْ مَثَلُ الجَسَدِ',
+    text:   'The example of the believers in their mutual love, mercy, and compassion is like that of a body — when one part suffers, the whole body responds with fever and sleeplessness.',
+    bangla: 'মুমিনরা পরস্পরের প্রতি ভালোবাসা, দয়া ও সহানুভূতিতে একটি দেহের মতো — যখন একটি অঙ্গ কষ্ট পায়, সমস্ত শরীর জ্বর ও নিদ্রাহীনতায় সাড়া দেয়।',
+    source: 'Sahih al-Bukhari 6011 & Muslim 2586'
+  },
+  {
+    arabic: 'المُسْلِمُ أَخُو المُسْلِمِ لَا يَظْلِمُهُ وَلَا يُسْلِمُهُ',
+    text:   'A Muslim is the brother of another Muslim. He neither oppresses him nor abandons him.',
+    bangla: 'মুসলমান মুসলমানের ভাই। সে তাকে অত্যাচার করে না এবং তাকে (বিপদে) ছেড়ে যায় না।',
+    source: 'Sahih al-Bukhari 2442'
+  },
+  {
+    arabic: 'لَا يُؤْمِنُ أَحَدُكُمْ حَتَّى يُحِبَّ لِأَخِيهِ مَا يُحِبُّ لِنَفْسِهِ',
+    text:   'None of you truly believes until he loves for his brother what he loves for himself.',
+    bangla: 'তোমাদের কেউ পূর্ণ মুমিন হবে না যতক্ষণ না সে তার ভাইয়ের জন্য তাই ভালোবাসে যা সে নিজের জন্য ভালোবাসে।',
+    source: 'Sahih al-Bukhari 13, Muslim 45'
+  },
+  {
+    arabic: 'الْمُؤْمِنُ لِلْمُؤْمِنِ كَالْبُنْيَانِ يَشُدُّ بَعْضُهُ بَعْضًا',
+    text:   'The believer to another believer is like a building — each part strengthens the other.',
+    bangla: 'একজন মুমিন অপর মুমিনের জন্য একটি ইমারতের মতো — প্রতিটি অংশ অপরটিকে মজবুত করে।',
+    source: 'Sahih al-Bukhari 481, Muslim 2585'
+  },
+  {
+    arabic: 'تَهَادَوْا تَحَابُّوا',
+    text:   'Exchange gifts — it will nurture love between you.',
+    bangla: 'একে অপরকে উপহার দাও — এটি তোমাদের মধ্যে ভালোবাসা বৃদ্ধি করবে।',
+    source: 'Al-Adab al-Mufrad 594 (Hasan)'
+  },
+  {
+    arabic: 'أَفْشُوا السَّلَامَ بَيْنَكُمْ',
+    text:   'Spread the greeting of peace among yourselves.',
+    bangla: 'তোমরা পরস্পরের মধ্যে সালামের প্রচলন করো।',
+    source: 'Sahih Muslim 54'
+  },
+  {
+    arabic: 'مَنْ كَانَ فِي حَاجَةِ أَخِيهِ كَانَ اللَّهُ فِي حَاجَتِهِ',
+    text:   'Whoever fulfils the need of his brother, Allah will fulfil his need.',
+    bangla: 'যে তার ভাইয়ের প্রয়োজন পূরণ করে, আল্লাহ তার প্রয়োজন পূরণ করেন।',
+    source: 'Sahih al-Bukhari 2442'
+  },
+  {
+    arabic: 'حَقُّ الْمُسْلِمِ عَلَى الْمُسْلِمِ سِتٌّ',
+    text:   'The Muslim has six rights over another Muslim: greet him when you meet, accept his invitation, give sincere advice, say Yarhamuk Allah when he sneezes, visit him when sick, and follow his funeral.',
+    bangla: 'মুসলমানের উপর মুসলমানের ছয়টি হক রয়েছে: দেখা হলে সালাম দেওয়া, দাওয়াত কবুল করা, সৎ পরামর্শ দেওয়া, হাঁচির জবাব দেওয়া, অসুস্থ হলে দেখতে যাওয়া এবং জানাজায় শরিক হওয়া।',
+    source: 'Sahih Muslim 2162'
+  },
+  {
+    arabic: 'خَيْرُ النَّاسِ أَنْفَعُهُمْ لِلنَّاسِ',
+    text:   'The best of people are those most beneficial to others.',
+    bangla: 'মানুষের মধ্যে সর্বোত্তম সেই ব্যক্তি যে মানুষের জন্য সবচেয়ে বেশি উপকারী।',
+    source: 'Al-Mujam al-Awsat (Al-Tabarani), Hasan'
+  },
+  {
+    arabic: 'إِنَّ اللَّهَ رَفِيقٌ يُحِبُّ الرِّفْقَ',
+    text:   'Indeed Allah is gentle and loves gentleness in all matters.',
+    bangla: 'নিশ্চয়ই আল্লাহ কোমল এবং তিনি সব বিষয়ে কোমলতা পছন্দ করেন।',
+    source: 'Sahih al-Bukhari 6927'
+  },
+
+  /* ── Greed, Wealth & Contentment ── */
+  {
+    arabic: 'لَوْ كَانَ لِابْنِ آدَمَ وَادِيَانِ مِنْ مَالٍ لَابْتَغَى وَادِيًا ثَالِثًا',
+    text:   'If the son of Adam had two valleys of wealth, he would seek a third — nothing fills the belly of the son of Adam except dust.',
+    bangla: 'আদম সন্তানের কাছে যদি দুই উপত্যকা ভরা সম্পদ থাকে, তবুও সে তৃতীয়টি চাইবে — মাটি ছাড়া আর কিছুই আদম সন্তানের পেট ভরাতে পারে না।',
+    source: 'Sahih al-Bukhari 6436, Muslim 1048'
+  },
+  {
+    arabic: 'اتَّقُوا الظُّلْمَ فَإِنَّ الظُّلْمَ ظُلُمَاتٌ يَوْمَ الْقِيَامَةِ',
+    text:   'Beware of injustice, for injustice will be darkness upon darkness on the Day of Resurrection.',
+    bangla: 'জুলুম থেকে বিরত থাকো, কারণ জুলুম কিয়ামতের দিন ঘন অন্ধকার হয়ে আসবে।',
+    source: 'Sahih Muslim 2578'
+  },
+  {
+    arabic: 'الْغِنَى غِنَى النَّفْسِ',
+    text:   'True richness is the richness of the soul (contentment of the heart) — not the abundance of worldly possessions.',
+    bangla: 'প্রকৃত সম্পদ হলো আত্মার সম্পদ (অন্তরের সন্তুষ্টি) — দুনিয়ার বস্তুর আধিক্য নয়।',
+    source: 'Sahih al-Bukhari 6446, Muslim 1051'
+  },
+  {
+    arabic: 'إِيَّاكُمْ وَالشُّحَّ فَإِنَّ الشُّحَّ أَهْلَكَ مَنْ كَانَ قَبْلَكُمْ',
+    text:   'Beware of greed, for greed destroyed those who came before you — it led them to shed blood and violate what was sacred.',
+    bangla: 'কৃপণতা থেকে বিরত থাকো, কারণ কৃপণতা তোমাদের পূর্ববর্তীদের ধ্বংস করেছে — এটি তাদের রক্তপাত ও হারাম কাজে লিপ্ত করেছিল।',
+    source: 'Sahih Muslim 2578'
+  },
+  {
+    arabic: 'مَا قَلَّ وَكَفَى خَيْرٌ مِمَّا كَثُرَ وَأَلْهَى',
+    text:   'A little that suffices is better than a lot that distracts (from Allah).',
+    bangla: 'সামান্য যা যথেষ্ট তা বহু পরিমাণ থেকে উত্তম যা (আল্লাহ থেকে) গাফেল করে দেয়।',
+    source: 'Musnad Ahmad, classified Sahih'
+  },
+
+  /* ── Envy & Jealousy ── */
+  {
+    arabic: 'إِيَّاكُمْ وَالْحَسَدَ فَإِنَّ الْحَسَدَ يَأْكُلُ الْحَسَنَاتِ كَمَا تَأْكُلُ النَّارُ الْحَطَبَ',
+    text:   'Beware of envy, for envy devours good deeds just as fire devours wood.',
+    bangla: 'হিংসা থেকে বিরত থাকো, কারণ হিংসা নেক আমলকে সেভাবে খেয়ে ফেলে যেভাবে আগুন কাঠকে জ্বালিয়ে দেয়।',
+    source: 'Sunan Abu Dawud 4903, Ibn Majah 4210'
+  },
+  {
+    arabic: 'لَا تَحَاسَدُوا وَلَا تَنَاجَشُوا وَلَا تَبَاغَضُوا وَلَا تَدَابَرُوا',
+    text:   'Do not envy one another, do not outbid one another (to inflate prices), do not hate one another, and do not turn your backs on one another.',
+    bangla: 'তোমরা পরস্পর হিংসা করো না, প্রতারণামূলক দরদাম করো না, পরস্পর বিদ্বেষ রেখো না এবং একে অপরের থেকে মুখ ফিরিয়ে নিও না।',
+    source: 'Sahih al-Bukhari 6064, Muslim 2563'
+  },
+  {
+    arabic: 'لَا حَسَدَ إِلَّا فِي اثْنَتَيْنِ',
+    text:   'There is no envy (that is praiseworthy) except in two cases: a man whom Allah has given wealth and he spends it righteously, and a man whom Allah has given wisdom and he acts upon it and teaches it.',
+    bangla: 'দুটি ক্ষেত্র ছাড়া কোনো হিংসা (প্রশংসনীয়) নেই: এমন ব্যক্তি যাকে আল্লাহ সম্পদ দিয়েছেন এবং সে তা সৎপথে ব্যয় করে, এবং এমন ব্যক্তি যাকে আল্লাহ জ্ঞান দিয়েছেন এবং সে তা প্রয়োগ ও শিক্ষা দেয়।',
+    source: 'Sahih al-Bukhari 73, Muslim 816'
+  },
+
+  /* ── Arrogance & Pride ── */
+  {
+    arabic: 'لَا يَدْخُلُ الْجَنَّةَ مَنْ كَانَ فِي قَلْبِهِ مِثْقَالُ ذَرَّةٍ مِنْ كِبْرٍ',
+    text:   'No one who has even an atom\'s weight of arrogance in his heart will enter Paradise.',
+    bangla: 'যার অন্তরে অণু পরিমাণও অহংকার থাকবে সে জান্নাতে প্রবেশ করবে না।',
+    source: 'Sahih Muslim 91'
+  },
+  {
+    arabic: 'الْكِبْرُ بَطَرُ الْحَقِّ وَغَمْطُ النَّاسِ',
+    text:   'Arrogance is rejecting the truth and looking down upon people.',
+    bangla: 'অহংকার হলো সত্যকে প্রত্যাখ্যান করা এবং মানুষকে তুচ্ছ মনে করা।',
+    source: 'Sahih Muslim 91'
+  },
+
+  /* ── Backbiting & Tongue ── */
+  {
+    arabic: 'مَنْ كَانَ يُؤْمِنُ بِاللَّهِ وَالْيَوْمِ الآخِرِ فَلْيَقُلْ خَيْرًا أَوْ لِيَصْمُتْ',
+    text:   'Whoever believes in Allah and the Last Day, let him speak good or remain silent.',
+    bangla: 'যে ব্যক্তি আল্লাহ ও পরকালে বিশ্বাস রাখে, সে যেন ভালো কথা বলে অথবা চুপ থাকে।',
+    source: 'Sahih al-Bukhari 6018, Muslim 47'
+  }
 ];
 function randomHadith() {
   return HADITH_POOL[Math.floor(Math.random() * HADITH_POOL.length)];
@@ -493,9 +618,10 @@ function renderHome() {
     ${(() => {
       const h = randomHadith();
       return '<div class="hadith-box">'
-        + '<div class="hadith-label">📖 Hadith of the Day &ndash; Community &amp; Brotherhood</div>'
+        + '<div class="hadith-label">📖 Hadith of the Day</div>'
         + '<div class="hadith-arabic">' + escapeHtml(h.arabic) + '</div>'
         + '<div class="hadith-text">' + escapeHtml(h.text) + '</div>'
+        + '<div class="hadith-bangla">' + escapeHtml(h.bangla || '') + '</div>'
         + '<div class="hadith-source">' + escapeHtml(h.source) + '</div>'
         + '</div>';
     })()}
