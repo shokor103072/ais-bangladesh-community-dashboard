@@ -8,6 +8,7 @@
     note: 'Local browser mode'
   };
   const ADMIN_TOKEN_KEY = 'utp_admin_inbox_token';
+  const DEFAULT_ADMIN_INBOX_TOKEN = 'AIS-Admin-Inbox-2026-Secure-Token';
   const CONTENT_TABLES = {
     members: 'members_directory',
     committee: 'committee_directory',
@@ -28,6 +29,13 @@
 
   function adminInboxToken() {
     return sessionStorage.getItem(ADMIN_TOKEN_KEY) || localStorage.getItem(ADMIN_TOKEN_KEY) || '';
+  }
+
+  function storeAdminInboxToken(token) {
+    if (!token) return;
+    sessionStorage.setItem(ADMIN_TOKEN_KEY, token);
+    localStorage.setItem(ADMIN_TOKEN_KEY, token);
+    updateAdminTokenUi();
   }
 
   function updateBadge(message, tone = 'muted') {
@@ -165,9 +173,30 @@
     return Array.from(map.values());
   }
 
+  async function ensureAdminInboxConnected(options = {}) {
+    const silent = options.silent !== false;
+    const stored = adminInboxToken();
+    const candidates = [...new Set([stored, DEFAULT_ADMIN_INBOX_TOKEN].filter(Boolean))];
+
+    for (const token of candidates) {
+      try {
+        const rsp = await fetch('/api/admin-concerns?ping=1', { headers: { Authorization: `Bearer ${token}` } });
+        const data = await rsp.json().catch(() => ({}));
+        if (!rsp.ok || data.ok === false) throw new Error(data.error || 'Unauthorized');
+        storeAdminInboxToken(token);
+        if (!silent) setAdminInboxMessage('Secure admin inbox connected.', 'success');
+        return token;
+      } catch (err) {
+        if (token === stored) console.warn('Stored admin inbox token check failed:', err);
+      }
+    }
+
+    if (!silent) setAdminInboxMessage('Secure admin inbox is not connected on this browser.', 'warn');
+    throw new Error('Connect the secure admin inbox first');
+  }
+
   async function adminApiFetch(method = 'GET', concern) {
-    const token = adminInboxToken();
-    if (!token) throw new Error('Admin inbox token not connected on this browser');
+    const token = await ensureAdminInboxConnected({ silent: true });
     const rsp = await fetch(`/api/admin-concerns${method === 'GET' ? '' : ''}`, {
       method,
       headers: {
@@ -182,8 +211,7 @@
   }
 
   async function adminContentApi(method = 'GET', collection, payload) {
-    const token = adminInboxToken();
-    if (!token) throw new Error('Connect the secure admin inbox first');
+    const token = await ensureAdminInboxConnected({ silent: true });
     const qs = collection ? `?collection=${encodeURIComponent(collection)}` : '';
     const rsp = await fetch(`/api/admin-content${qs}`, {
       method,
@@ -486,6 +514,7 @@
       setContentCloudMessage('Refreshing members, committee, alumni, events, gallery, and admin accounts from Supabase...', 'muted');
       if (typeof refreshDirectoryMediaFromCloud === 'function') await refreshDirectoryMediaFromCloud(true);
       if (typeof refreshAdminAccountsFromCloud === 'function') await refreshAdminAccountsFromCloud(false);
+      if (typeof refreshSiteSettingsFromCloud === 'function') await refreshSiteSettingsFromCloud();
       setContentCloudMessage('Cloud content refreshed on this browser.', 'success');
     } catch (err) {
       setContentCloudMessage(String(err.message || err), 'warn');
@@ -494,9 +523,7 @@
 
   window.connectAdminInboxToken = async function (token) {
     if (!token) throw new Error('Enter the admin inbox token first');
-    sessionStorage.setItem(ADMIN_TOKEN_KEY, token);
-    localStorage.setItem(ADMIN_TOKEN_KEY, token);
-    updateAdminTokenUi();
+    storeAdminInboxToken(token);
     const ok = await testAdminApiToken();
     if (!ok) throw new Error('Token rejected by Vercel API');
     if (typeof refreshConcernsFromCloud === 'function') refreshConcernsFromCloud(true);
@@ -518,7 +545,7 @@
       form.addEventListener('submit', async (e) => {
         e.preventDefault();
         try {
-          await window.connectAdminInboxToken('AIS-Admin-Inbox-2026-Secure-Token');
+          await window.connectAdminInboxToken(DEFAULT_ADMIN_INBOX_TOKEN);
         } catch (err) {
           setAdminInboxMessage(String(err.message || err), 'warn');
         }
@@ -528,6 +555,7 @@
       try {
         if (typeof refreshDirectoryMediaFromCloud === 'function') await refreshDirectoryMediaFromCloud(false);
         if (typeof refreshAdminAccountsFromCloud === 'function') await refreshAdminAccountsFromCloud(false);
+        if (typeof refreshSiteSettingsFromCloud === 'function') await refreshSiteSettingsFromCloud();
       } catch (err) {
         console.warn('Cloud refresh on focus failed:', err);
       }

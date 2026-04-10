@@ -17,13 +17,18 @@ const defaultConcerns = [];
 /* ===== Committee Message ===== */
 let committeeMessage = store.get('utp_committee_message', { text: '', author: '', active: false });
 window.getCommitteeMessage = () => committeeMessage;
-window.setCommitteeMessage = function(text, author, active) {
+window.setCommitteeMessage = async function(text, author, active) {
   committeeMessage = { text: (text || '').trim(), author: (author || '').trim(), active: !!active };
   store.set('utp_committee_message', committeeMessage);
   if (typeof window.saveSiteSettingToCloud === 'function') {
-    window.saveSiteSettingToCloud('committee_message', committeeMessage).catch(e => console.warn('Settings cloud save failed:', e));
+    try {
+      await window.saveSiteSettingToCloud('committee_message', committeeMessage);
+    } catch (e) {
+      console.warn('Settings cloud save failed:', e);
+    }
   }
   renderHome();
+  return committeeMessage;
 };
 
 /* ===== Cloud settings refresh ===== */
