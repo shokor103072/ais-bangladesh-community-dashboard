@@ -151,6 +151,19 @@
     };
   }
 
+  function dedupeItemsById(items, label = 'items') {
+    const map = new Map();
+    let removed = 0;
+    for (const item of Array.isArray(items) ? items : []) {
+      const id = Number(item && item.id);
+      if (!Number.isFinite(id) || id <= 0) continue;
+      if (map.has(id)) removed += 1;
+      map.set(id, { ...item, id });
+    }
+    if (removed) console.warn(`Removed ${removed} duplicate ${label} before Supabase publish.`);
+    return Array.from(map.values());
+  }
+
   async function adminApiFetch(method = 'GET', concern) {
     const token = adminInboxToken();
     if (!token) throw new Error('Admin inbox token not connected on this browser');
@@ -356,8 +369,9 @@
   window.saveGalleryItemToCloud = item => savePayloadItem('gallery', item);
   window.saveAdminAccountsToCloud = async items => {
     if (!state.ready) return items;
-    const data = await adminContentApi('POST', 'admins', { collection: 'admins', items: (items || []).map(toPayloadRow) });
-    return Array.isArray(data.items) ? data.items.map(mapPayloadRow) : items;
+    const cleanItems = dedupeItemsById(items || [], 'admin accounts');
+    const data = await adminContentApi('POST', 'admins', { collection: 'admins', items: cleanItems.map(toPayloadRow) });
+    return Array.isArray(data.items) ? data.items.map(mapPayloadRow) : cleanItems;
   };
   window.deleteMemberFromCloud = id => deletePayloadItem('members', id);
   window.deleteCommitteeFromCloud = id => deletePayloadItem('committee', id);
@@ -396,14 +410,20 @@
       return;
     }
     try {
+      const cleanMembers = dedupeItemsById(snapshot.members || [], 'members');
+      const cleanCommittee = dedupeItemsById(snapshot.committee || [], 'committee');
+      const cleanAlumni = dedupeItemsById(snapshot.alumni || [], 'alumni');
+      const cleanEvents = dedupeItemsById(snapshot.events || [], 'events');
+      const cleanGallery = dedupeItemsById(snapshot.gallery || [], 'gallery items');
+      const cleanAdmins = dedupeItemsById(snapshot.adminAccounts || [], 'admin accounts');
       setContentCloudMessage('Publishing members, committee, alumni, events, gallery, and admin accounts to Supabase...', 'muted');
-      await adminContentApi('POST', 'members', { collection: 'members', items: (snapshot.members || []).map(toPayloadRow) });
-      await adminContentApi('POST', 'committee', { collection: 'committee', items: (snapshot.committee || []).map(toPayloadRow) });
-      await adminContentApi('POST', 'alumni', { collection: 'alumni', items: (snapshot.alumni || []).map(toPayloadRow) });
-      await adminContentApi('POST', 'events', { collection: 'events', items: (snapshot.events || []).map(toPayloadRow) });
-      await adminContentApi('POST', 'gallery', { collection: 'gallery', items: (snapshot.gallery || []).map(toPayloadRow) });
-      if (Array.isArray(snapshot.adminAccounts) && snapshot.adminAccounts.length) {
-        await adminContentApi('POST', 'admins', { collection: 'admins', items: (snapshot.adminAccounts || []).map(toPayloadRow) });
+      await adminContentApi('POST', 'members', { collection: 'members', items: cleanMembers.map(toPayloadRow) });
+      await adminContentApi('POST', 'committee', { collection: 'committee', items: cleanCommittee.map(toPayloadRow) });
+      await adminContentApi('POST', 'alumni', { collection: 'alumni', items: cleanAlumni.map(toPayloadRow) });
+      await adminContentApi('POST', 'events', { collection: 'events', items: cleanEvents.map(toPayloadRow) });
+      await adminContentApi('POST', 'gallery', { collection: 'gallery', items: cleanGallery.map(toPayloadRow) });
+      if (cleanAdmins.length) {
+        await adminContentApi('POST', 'admins', { collection: 'admins', items: cleanAdmins.map(toPayloadRow) });
       }
       setContentCloudMessage('Content migration complete. Members, committee, alumni, events, gallery, and admin accounts are now stored in Supabase.', 'success');
       if (typeof refreshDirectoryMediaFromCloud === 'function') refreshDirectoryMediaFromCloud(true);
