@@ -205,7 +205,10 @@ function socialLinksOf(m) {
     m.facebook ? `<a class="chip" href="${m.facebook}" target="_blank" rel="noopener">Facebook</a>` : '',
     m.instagram ? `<a class="chip" href="${m.instagram}" target="_blank" rel="noopener">Instagram</a>` : '',
     m.whatsapp ? `<a class="chip" href="${m.whatsapp}" target="_blank" rel="noopener">WhatsApp</a>` : '',
-    m.linkedin ? `<a class="chip" href="${m.linkedin}" target="_blank" rel="noopener">LinkedIn</a>` : ''
+    m.linkedin ? `<a class="chip" href="${m.linkedin}" target="_blank" rel="noopener">LinkedIn</a>` : '',
+    m.googleScholar ? `<a class="chip" href="${m.googleScholar}" target="_blank" rel="noopener">Google Scholar</a>` : '',
+    m.researchGate ? `<a class="chip" href="${m.researchGate}" target="_blank" rel="noopener">ResearchGate</a>` : '',
+    m.website ? `<a class="chip" href="${m.website}" target="_blank" rel="noopener">Website</a>` : ''
   ].filter(Boolean).join('');
 }
 function currentAdminName() { return (typeof adminSession !== 'undefined' && adminSession && adminSession.name) ? adminSession.name : 'Committee Admin'; }
@@ -577,7 +580,7 @@ function renderMembers() {
     return ia - ib;
   });
   page.innerHTML = `
-    <div class="page-banner"><h2>Members Directory</h2><p>Search by name, category, department, intake, place of living, phone, or email.</p></div>
+    <div class="page-banner"><h2>Members Directory</h2><p>Search by name, category, gender, department, intake, place of living, phone, or email.</p></div>
     <div class="card cover-card">
       <div class="section-title"><h2>Browse community members</h2>${adminMode() ? '<button class="ghost" id="exportCsv">Export CSV</button>' : ''}</div>
       <div class="directory-toolbar">
@@ -639,7 +642,7 @@ function renderMembers() {
     const d = normalize(dept.value);
     const pl = normalize(activePlace || place.value);
     const list = membersData.filter(m => {
-      const matchQ = !q || [m.name, m.email, m.phone, m.department, m.category, m.place, intakeLabel(m), m.intakeMonth, m.intakeYear].some(v => normalize(v).includes(q));
+      const matchQ = !q || [m.name, m.email, m.phone, m.department, m.category, m.gender, m.place, intakeLabel(m), m.intakeMonth, m.intakeYear].some(v => normalize(v).includes(q));
       const matchC = activeCat === 'All' || m.category === activeCat;
       const matchD = !d || normalize(m.department) === d;
       const matchP = !pl || normalize(m.place) === pl;
@@ -657,6 +660,7 @@ function renderMembers() {
             <div class="inline-metrics">
               ${showField('email') && m.email ? `<span class="chip">✉️ ${m.email}</span>` : ''}
               ${showField('phone') && m.phone ? `<span class="chip">📞 ${m.phone}</span>` : ''}
+              ${m.gender ? `<span class="chip">${m.gender}</span>` : ''}
               ${showField('birthday') && m.birthday ? `<span class="chip">🎂 ${fmtDate(m.birthday)}</span>` : ''}
               ${showField('intake') && intakeLabel(m) ? `<span class="chip">🗓️ ${intakeLabel(m)}</span>` : ''}
               ${showField('place') && m.place ? `<span class="chip">📍 ${m.place}</span>` : ''}
@@ -672,8 +676,8 @@ function renderMembers() {
 
   function exportMembers() {
     if (!adminMode()) return;
-    const rows = [['Name', 'Category', 'Department', 'Email', 'Phone', 'Birthday', 'Intake', 'Place of Living', 'Facebook', 'Instagram', 'WhatsApp', 'LinkedIn', 'Graduate Year']].concat(
-      membersData.map(m => [m.name, m.category, m.department, m.email, m.phone || '', m.birthday || '', intakeLabel(m), m.place || '', m.facebook || '', m.instagram || '', m.whatsapp || '', m.linkedin || '', m.graduateYear || ''])
+    const rows = [['Name', 'Category', 'Gender', 'Department', 'Email', 'Phone', 'Birthday', 'Intake', 'Place of Living', 'Facebook', 'Instagram', 'WhatsApp', 'LinkedIn', 'Graduate Year']].concat(
+      membersData.map(m => [m.name, m.category, m.gender || '', m.department, m.email, m.phone || '', m.birthday || '', intakeLabel(m), m.place || '', m.facebook || '', m.instagram || '', m.whatsapp || '', m.linkedin || '', m.graduateYear || ''])
     );
     const csv = rows.map(r => r.map(v => `"${(v || '').toString().replace(/"/g, '""')}"`).join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
@@ -699,6 +703,7 @@ function renderCommittee() {
             <div style="flex:1">
               <div><strong style="font-size:16px">${c.name}</strong></div>
               <div class="inline-metrics">
+                ${c.gender ? `<span class="chip">${c.gender}</span>` : ''}
                 ${c.email ? `<span class="chip">✉️ ${c.email}</span>` : ''}
                 ${c.phone ? `<span class="chip">📞 ${c.phone}</span>` : ''}
               </div>
@@ -733,7 +738,7 @@ function renderAlumni() {
   const grid = page.querySelector('#alumniGrid');
   const draw = () => {
     const q = normalize(search.value);
-    const list = alumniData.filter(a => !q || [a.name, a.batch, a.position, a.company, a.location].some(v => normalize(v).includes(q)));
+    const list = alumniData.filter(a => !q || [a.name, a.batch, a.gender, a.position, a.company, a.location].some(v => normalize(v).includes(q)));
     grid.innerHTML = list.length ? list.map(a => `
       <div class="card cover-card">
         <div class="person" style="align-items:flex-start">
@@ -741,7 +746,8 @@ function renderAlumni() {
           <div style="flex:1">
             <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><strong>${a.name}</strong><span class="chip">Batch ${a.batch || '-'}</span></div>
             <div style="margin-top:6px">${a.position || ''}${a.company ? ` @ ${a.company}` : ''}</div>
-            <div class="muted">${a.location || ''}</div>
+            <div class="inline-metrics">${a.gender ? `<span class="chip">${a.gender}</span>` : ''}${a.location ? `<span class="chip">📍 ${a.location}</span>` : ''}</div>
+            <div class="inline-metrics">${socialLinksOf(a)}</div>
             <div class="admin-actions"><button class="btn-edit" data-action="edit-alumni" data-id="${encodeURIComponent(String(a.id || a.name)).replace(/'/g, '%27')}" type="button">✏️ Edit</button></div>
           </div>
         </div>
@@ -1252,6 +1258,10 @@ function renderOnboarding() {
             <div><label>Category</label><select name="category"><option>Foundation</option><option>Undergraduate</option><option>Msc</option><option>PhD</option><option>Lecturer</option><option>Staff (Research Scientist/Post Doctoral)</option></select></div>
             <div><label>Department</label><input required name="department" id="nmDept" list="deptList"></div>
           </div>
+          <div class="grid grid-2">
+            <div><label>Gender</label><select name="gender"><option value="">Select gender</option><option>Male</option><option>Female</option></select></div>
+            <div></div>
+          </div>
           <datalist id="deptList">${[...new Set([...membersData.map(m => m.department), 'Department of Chemical Engineering', 'Department of Civil and Environmental Engineering', 'Department of Electrical and Electronics Engineering', 'Department of Integrated Engineering', 'Department of Mechanical Engineering', 'Department of Petroleum Engineering', 'Department of Applied Science (formerly Fundamental and Applied Sciences)', 'Department of Computing (formerly Computer & Information Sciences)', 'Department of Geoscience', 'Department of Management (formerly Management & Humanities)'])].map(d => `<option value="${d}">`).join('')}</datalist>
           <div class="grid grid-2">
             <div><label>Birthday</label><input type="date" name="birthday"></div>
@@ -1326,7 +1336,7 @@ function renderOnboarding() {
       f.email.focus();
       return;
     }
-    const obj = { id: Date.now(), name: f.name.value.trim(), category: f.category.value, department: f.department.value, birthday: f.birthday.value || '', phone: f.phone.value, email: f.email.value.trim(), photo: f.photo.value || 'https://i.pravatar.cc/200', intakeMonth: f.intakeMonth.value, intakeYear: f.intakeYear.value, place: f.place.value, graduateYear: parseInt(f.graduateYear.value) || null, facebook: f.facebook.value.trim(), instagram: f.instagram.value.trim(), whatsapp: f.whatsapp.value.trim(), linkedin: f.linkedin.value.trim() };
+    const obj = { id: Date.now(), name: f.name.value.trim(), category: f.category.value, department: f.department.value, gender: f.gender.value, birthday: f.birthday.value || '', phone: f.phone.value, email: f.email.value.trim(), photo: f.photo.value || 'https://i.pravatar.cc/200', intakeMonth: f.intakeMonth.value, intakeYear: f.intakeYear.value, place: f.place.value, graduateYear: parseInt(f.graduateYear.value) || null, facebook: f.facebook.value.trim(), instagram: f.instagram.value.trim(), whatsapp: f.whatsapp.value.trim(), linkedin: f.linkedin.value.trim() };
     membersData.unshift(obj);
     persistMembersLocal();
     if (typeof window.saveMemberToCloud === 'function') {

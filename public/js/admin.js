@@ -32,12 +32,27 @@ function getAdminAccounts() {
   store.set(ADMIN_ACCOUNTS_KEY, defaults);
   return defaults;
 }
-function saveAdminAccounts(accounts) {
+async function saveAdminAccounts(accounts, options = {}) {
+  const { silent = false } = options;
   store.set(ADMIN_ACCOUNTS_KEY, accounts);
-  if (typeof window.saveAdminAccountsToCloud === 'function') {
-    window.saveAdminAccountsToCloud(accounts).then(saved => {
-      if (Array.isArray(saved) && saved.length) store.set(ADMIN_ACCOUNTS_KEY, saved);
-    }).catch(err => console.warn('Cloud admin account sync failed:', err));
+  if (typeof window.saveAdminAccountsToCloud !== 'function') return accounts;
+  try {
+    const saved = await window.saveAdminAccountsToCloud(accounts);
+    if (Array.isArray(saved) && saved.length) {
+      store.set(ADMIN_ACCOUNTS_KEY, saved);
+      if (typeof refreshAdminAccountsFromCloud === 'function') await refreshAdminAccountsFromCloud(false);
+      return saved;
+    }
+    return accounts;
+  } catch (err) {
+    console.warn('Cloud admin account sync failed:', err);
+    if (!silent) {
+      const message = /token/i.test(String(err.message || err))
+        ? 'Admin account changed only on this browser. Connect the secure admin inbox token to sync logins across browsers.'
+        : 'Admin account changed locally, but cloud sync failed.';
+      showToast(message);
+    }
+    throw err;
   }
 }
 async function refreshAdminAccountsFromCloud(forceUi = false) {
@@ -187,12 +202,18 @@ document.getElementById('formChangePassword').addEventListener('submit', async e
   delete accounts[idx].password;
   adminSession.passwordHash = newHash;
   delete adminSession.password;
-  saveAdminAccounts(accounts);
-  logAction('Password changed', adminLabel());
-  msg.style.display = 'block';
-  msg.style.color = 'var(--green)';
-  msg.textContent = 'Password updated successfully!';
-  f.reset();
+  try {
+    await saveAdminAccounts(accounts, { silent: false });
+    logAction('Password changed', adminLabel());
+    msg.style.display = 'block';
+    msg.style.color = 'var(--green)';
+    msg.textContent = 'Password updated successfully!';
+    f.reset();
+  } catch (err) {
+    msg.style.display = 'block';
+    msg.style.color = 'var(--red)';
+    msg.textContent = String(err.message || err);
+  }
 });
 const VISIBILITY_KEY = 'utp_public_visibility';
 const COMMUNITY_LINKS_KEY = 'utp_community_links';
@@ -272,10 +293,14 @@ async function addAdminAccount() {
   if (!password) return;
   const passwordHash = await sha256(password);
   accounts.push({ id: Date.now(), username: username.toLowerCase(), passwordHash, passwordHint: 'Created by master admin', name, role, isMaster: false });
-  saveAdminAccounts(accounts);
-  logAction('Admin account added', `${name} • @${username.toLowerCase()}`);
-  renderAdminAccountsList();
-  showToast('Admin account added');
+  try {
+    await saveAdminAccounts(accounts, { silent: false });
+    logAction('Admin account added', `${name} • @${username.toLowerCase()}`);
+    renderAdminAccountsList();
+    showToast('Admin account added');
+  } catch (err) {
+    alert(String(err.message || err));
+  }
 }
 async function editAdminAccount(id) {
   if (!isMasterAdmin()) return;
@@ -294,21 +319,30 @@ async function editAdminAccount(id) {
     acc.passwordHint = 'Updated by master admin';
     delete acc.password;
   }
-  saveAdminAccounts(accounts);
-  logAction('Admin account edited', `${acc.name} • @${acc.username}`);
-  renderAdminAccountsList();
-  showToast('Admin account updated');
+  try {
+    await saveAdminAccounts(accounts, { silent: false });
+    if (adminSession && adminSession.id === acc.id) adminSession = { ...adminSession, ...acc };
+    logAction('Admin account edited', `${acc.name} • @${acc.username}`);
+    renderAdminAccountsList();
+    showToast('Admin account updated');
+  } catch (err) {
+    alert(String(err.message || err));
+  }
 }
-function deleteAdminAccount(id) {
+async function deleteAdminAccount(id) {
   if (!isMasterAdmin()) return;
   const accounts = getAdminAccounts();
   const acc = accounts.find(a => a.id === id);
   if (!acc || acc.isMaster) return;
   if (!confirm(`Delete admin account for ${acc.name}?`)) return;
-  saveAdminAccounts(accounts.filter(a => a.id !== id));
-  logAction('Admin account deleted', `${acc.name} • @${acc.username}`);
-  renderAdminAccountsList();
-  showToast('Admin account deleted');
+  try {
+    await saveAdminAccounts(accounts.filter(a => a.id !== id), { silent: false });
+    logAction('Admin account deleted', `${acc.name} • @${acc.username}`);
+    renderAdminAccountsList();
+    showToast('Admin account deleted');
+  } catch (err) {
+    alert(String(err.message || err));
+  }
 }
 function clearAdminLogs() {
   if (!isMasterAdmin()) return;
@@ -324,10 +358,12 @@ function addCommitteeMember() {
   if (!role) return;
   const name = prompt('Full name');
   if (!name) return;
+  const gender = prompt('Gender (Male/Female)', 'Male') || '';
+  const normalizedGender = /female/i.test(gender) ? 'Female' : /male/i.test(gender) ? 'Male' : '';
   const email = prompt('Email (optional)') || '';
   const phone = prompt('Phone (optional)') || '';
   const photo = prompt('Photo URL (optional)') || '';
-  committeeData.unshift({ id: Date.now(), role, name, email, phone, photo });
+  committeeData.unshift({ id: Date.now(), role, name, gender: normalizedGender, email, phone, photo });
   store.set('utp_committee', committeeData);
   logAction('Committee member added', `${name} • ${role}`);
   showToast('Committee member added');
@@ -349,11 +385,19 @@ function addAlumniProfile() {
   const name = prompt('Alumni name');
   if (!name) return;
   const batch = prompt('Batch / graduation year (optional)') || '';
+  const gender = prompt('Gender (Male/Female)', 'Male') || '';
+  const normalizedGender = /female/i.test(gender) ? 'Female' : /male/i.test(gender) ? 'Male' : '';
   const position = prompt('Current position (optional)') || '';
   const company = prompt('Company / organization (optional)') || '';
   const location = prompt('Location (optional)') || '';
   const photo = prompt('Photo URL (optional)') || '';
-  alumniData.unshift({ id: Date.now(), name, batch, position, company, location, photo });
+  const linkedin = prompt('LinkedIn URL (optional)') || '';
+  const facebook = prompt('Facebook URL (optional)') || '';
+  const instagram = prompt('Instagram URL (optional)') || '';
+  const googleScholar = prompt('Google Scholar URL (optional)') || '';
+  const researchGate = prompt('ResearchGate URL (optional)') || '';
+  const website = prompt('Other social / website URL (optional)') || '';
+  alumniData.unshift({ id: Date.now(), name, batch, gender: normalizedGender, position, company, location, photo, linkedin, facebook, instagram, googleScholar, researchGate, website });
   store.set('utp_alumni', alumniData);
   logAction('Alumni added', name);
   showToast('Alumni profile added');
@@ -379,6 +423,7 @@ function openEditMember(id) {
   document.getElementById('editMemberName').value = m.name || '';
   document.getElementById('editMemberCategory').value = m.category || 'Undergraduate';
   document.getElementById('editMemberDept').value = m.department || '';
+  document.getElementById('editMemberGender').value = m.gender || '';
   document.getElementById('editMemberBday').value = m.birthday || '';
   document.getElementById('editMemberPhone').value = m.phone || '';
   document.getElementById('editMemberIntakeMonth').value = m.intakeMonth || '';
@@ -408,6 +453,7 @@ document.getElementById('formEditMember').addEventListener('submit', async e => 
     name: f.querySelector('#editMemberName').value.trim(),
     category: f.querySelector('#editMemberCategory').value,
     department: f.querySelector('#editMemberDept').value.trim(),
+    gender: f.querySelector('#editMemberGender').value,
     birthday: f.querySelector('#editMemberBday').value,
     phone: f.querySelector('#editMemberPhone').value.trim(),
     intakeMonth: f.querySelector('#editMemberIntakeMonth').value,
@@ -553,6 +599,7 @@ function openEditCommittee(key) {
   document.getElementById('editCommitteeId').value = editingCommitteeKey;
   document.getElementById('editCommitteeRole').value = c.role || '';
   document.getElementById('editCommitteeName').value = c.name || '';
+  document.getElementById('editCommitteeGender').value = c.gender || '';
   document.getElementById('editCommitteeEmail').value = c.email || '';
   document.getElementById('editCommitteePhone').value = c.phone || '';
   document.getElementById('editCommitteePhoto').value = (c.photo && !String(c.photo).startsWith('data:')) ? c.photo : '';
@@ -568,6 +615,7 @@ document.getElementById('formEditCommittee').addEventListener('submit', e => {
   Object.assign(committeeData[idx], {
     role: f.role.value.trim(),
     name: f.name.value.trim(),
+    gender: f.gender ? f.gender.value : '',
     email: f.email.value.trim(),
     phone: f.phone.value.trim()
   });
@@ -599,10 +647,17 @@ function openEditAlumni(key) {
   document.getElementById('editAlumniId').value = editingAlumniKey;
   document.getElementById('editAlumniName').value = a.name || '';
   document.getElementById('editAlumniBatch').value = a.batch || '';
+  document.getElementById('editAlumniGender').value = a.gender || '';
   document.getElementById('editAlumniPosition').value = a.position || '';
   document.getElementById('editAlumniCompany').value = a.company || '';
   document.getElementById('editAlumniLocation').value = a.location || '';
   document.getElementById('editAlumniPhoto').value = (a.photo && !String(a.photo).startsWith('data:')) ? a.photo : '';
+  document.getElementById('editAlumniLinkedin').value = a.linkedin || '';
+  document.getElementById('editAlumniFacebook').value = a.facebook || '';
+  document.getElementById('editAlumniInstagram').value = a.instagram || '';
+  document.getElementById('editAlumniGoogleScholar').value = a.googleScholar || '';
+  document.getElementById('editAlumniResearchGate').value = a.researchGate || '';
+  document.getElementById('editAlumniWebsite').value = a.website || '';
   openModal('modalEditAlumni');
 }
 
@@ -615,9 +670,16 @@ document.getElementById('formEditAlumni').addEventListener('submit', e => {
   Object.assign(alumniData[idx], {
     name: f.name.value.trim(),
     batch: f.batch.value.trim(),
+    gender: f.gender ? f.gender.value : '',
     position: f.position.value.trim(),
     company: f.company.value.trim(),
-    location: f.location.value.trim()
+    location: f.location.value.trim(),
+    linkedin: f.linkedin ? f.linkedin.value.trim() : '',
+    facebook: f.facebook ? f.facebook.value.trim() : '',
+    instagram: f.instagram ? f.instagram.value.trim() : '',
+    googleScholar: f.googleScholar ? f.googleScholar.value.trim() : '',
+    researchGate: f.researchGate ? f.researchGate.value.trim() : '',
+    website: f.website ? f.website.value.trim() : ''
   });
   if (f.photo.value.trim()) alumniData[idx].photo = f.photo.value.trim();
   store.set('utp_alumni', alumniData);
@@ -855,7 +917,7 @@ function importAllData(event) {
       if (data.achievements) { achievementsData = data.achievements; store.set('utp_achievements', achievementsData); }
       if (data.gallery) { galleryData = data.gallery; store.set('utp_gallery', galleryData); }
       if (data.concerns) { concernsData = data.concerns; store.set('utp_concerns', concernsData); }
-      if (data.adminAccounts) { saveAdminAccounts(data.adminAccounts); }
+      if (data.adminAccounts) { saveAdminAccounts(data.adminAccounts, { silent: true }).catch(() => {}); }
       if (data.adminLogs) { saveAdminLogs(data.adminLogs); }
       logAction('Data imported', 'Backup restored');
       showToast('Data imported successfully');
@@ -891,7 +953,7 @@ function resetAllData() {
   galleryData = gallery;
   concernsData = [];
   rsvps = {};
-  saveAdminAccounts(defaultAdminAccounts());
+  saveAdminAccounts(defaultAdminAccounts(), { silent: true }).catch(() => {});
   saveAdminLogs([]);
   closeModal('modalAdminSettings');
   logAction('Data reset', 'Local edits reset to default dataset');

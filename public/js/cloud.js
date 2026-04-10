@@ -365,11 +365,14 @@
       return;
     }
     try {
-      setContentCloudMessage('Publishing members, events, and gallery to Supabase...', 'muted');
+      setContentCloudMessage('Publishing members, events, gallery, and admin accounts to Supabase...', 'muted');
       await adminContentApi('POST', 'members', { collection: 'members', items: (snapshot.members || []).map(toPayloadRow) });
       await adminContentApi('POST', 'events', { collection: 'events', items: (snapshot.events || []).map(toPayloadRow) });
       await adminContentApi('POST', 'gallery', { collection: 'gallery', items: (snapshot.gallery || []).map(toPayloadRow) });
-      setContentCloudMessage('Content migration complete. Members, events, and gallery are now stored in Supabase.', 'success');
+      if (Array.isArray(snapshot.adminAccounts) && snapshot.adminAccounts.length) {
+        await adminContentApi('POST', 'admins', { collection: 'admins', items: (snapshot.adminAccounts || []).map(toPayloadRow) });
+      }
+      setContentCloudMessage('Content migration complete. Members, events, gallery, and admin accounts are now stored in Supabase.', 'success');
       if (typeof refreshDirectoryMediaFromCloud === 'function') refreshDirectoryMediaFromCloud(true);
       if (typeof refreshAdminAccountsFromCloud === 'function') refreshAdminAccountsFromCloud(false);
     } catch (err) {
@@ -379,8 +382,9 @@
 
   window.pullContentFromCloud = async function () {
     try {
-      setContentCloudMessage('Refreshing members, events, and gallery from Supabase...', 'muted');
+      setContentCloudMessage('Refreshing members, events, gallery, and admin accounts from Supabase...', 'muted');
       if (typeof refreshDirectoryMediaFromCloud === 'function') await refreshDirectoryMediaFromCloud(true);
+      if (typeof refreshAdminAccountsFromCloud === 'function') await refreshAdminAccountsFromCloud(false);
       setContentCloudMessage('Cloud content refreshed on this browser.', 'success');
     } catch (err) {
       setContentCloudMessage(String(err.message || err), 'warn');
@@ -390,6 +394,7 @@
   window.connectAdminInboxToken = async function (token) {
     if (!token) throw new Error('Enter the admin inbox token first');
     sessionStorage.setItem(ADMIN_TOKEN_KEY, token);
+    localStorage.setItem(ADMIN_TOKEN_KEY, token);
     updateAdminTokenUi();
     const ok = await testAdminApiToken();
     if (!ok) throw new Error('Token rejected by Vercel API');
@@ -419,6 +424,14 @@
         }
       });
     }
+    window.addEventListener('focus', async () => {
+      try {
+        if (typeof refreshDirectoryMediaFromCloud === 'function') await refreshDirectoryMediaFromCloud(false);
+        if (typeof refreshAdminAccountsFromCloud === 'function') await refreshAdminAccountsFromCloud(false);
+      } catch (err) {
+        console.warn('Cloud refresh on focus failed:', err);
+      }
+    });
     initSupabase();
   });
 })();
