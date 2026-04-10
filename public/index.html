@@ -218,7 +218,16 @@
         <div><label>Graduate Year</label><input type="number" name="graduateYear" id="editMemberGradYear"></div>
       </div>
       <label>Email</label><input type="email" name="email" id="editMemberEmail">
-      <label>Photo URL</label><input name="photo" id="editMemberPhoto">
+      <label>Photo URL</label><input name="photo" id="editMemberPhoto" placeholder="https://...">
+      <div class="upload-note">Local computer paths will not work here. Upload the file below instead.</div>
+      <div class="upload-panel" data-upload-target="editMemberPhoto" data-preview-target="editMemberPhotoPreview" data-file-input="editMemberPhotoFile" data-folder="members" data-accept="image/*" data-upload-kind="image">
+        <div class="upload-dropzone" data-role="dropzone" tabindex="0">
+          <div><strong>Drag and drop member photo here</strong></div>
+          <div class="muted">or click to browse from your computer</div>
+        </div>
+        <input type="file" id="editMemberPhotoFile" accept="image/*" hidden>
+        <div class="upload-preview" id="editMemberPhotoPreview"></div>
+      </div>
       <div class="grid grid-2">
         <div><label>Facebook</label><input name="facebook" id="editMemberFacebook" placeholder="https://facebook.com/..."></div>
         <div><label>Instagram</label><input name="instagram" id="editMemberInstagram" placeholder="https://instagram.com/..."></div>
@@ -252,7 +261,16 @@
       </div>
       <label>Venue</label><input required name="venue" id="editEventVenue">
       <label>Description</label><textarea name="description" rows="3" id="editEventDesc"></textarea>
-      <label>Image URL</label><input name="image" id="editEventImage">
+      <label>Image URL</label><input name="image" id="editEventImage" placeholder="https://...">
+      <div class="upload-note">Local computer paths will not work here. Upload the file below instead.</div>
+      <div class="upload-panel" data-upload-target="editEventImage" data-preview-target="editEventImagePreview" data-file-input="editEventImageFile" data-folder="events" data-accept="image/*" data-upload-kind="image">
+        <div class="upload-dropzone" data-role="dropzone" tabindex="0">
+          <div><strong>Drag and drop event image here</strong></div>
+          <div class="muted">or click to browse from your computer</div>
+        </div>
+        <input type="file" id="editEventImageFile" accept="image/*" hidden>
+        <div class="upload-preview" id="editEventImagePreview"></div>
+      </div>
       <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
         <button type="button" class="ghost" style="color:var(--red)" onclick="deleteEvent()">Delete</button>
         <button type="button" class="ghost" onclick="closeModal('modalEditEvent')">Cancel</button>
@@ -277,7 +295,16 @@
       </div>
       <label>Venue</label><input required name="venue">
       <label>Description</label><textarea name="description" rows="3"></textarea>
-      <label>Image URL (optional)</label><input name="image" placeholder="https://...">
+      <label>Image URL (optional)</label><input name="image" id="eventImageInput" placeholder="https://...">
+      <div class="upload-note">Do not paste a PC file path like C:\Users\... . Use the uploader below for local files.</div>
+      <div class="upload-panel" data-upload-target="eventImageInput" data-preview-target="eventImagePreview" data-file-input="eventImageFile" data-folder="events" data-accept="image/*" data-upload-kind="image">
+        <div class="upload-dropzone" data-role="dropzone" tabindex="0">
+          <div><strong>Drag and drop event image here</strong></div>
+          <div class="muted">or click to browse from your computer</div>
+        </div>
+        <input type="file" id="eventImageFile" accept="image/*" hidden>
+        <div class="upload-preview" id="eventImagePreview"></div>
+      </div>
       <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
         <button type="button" class="ghost" onclick="closeModal('modalEvent')">Cancel</button>
         <button class="primary" type="submit">Save Event</button>
@@ -348,7 +375,16 @@
         <div><label>Date</label><input type="date" required name="date"></div>
         <div><label>Category</label><select name="category"><option>Cultural</option><option>Sports</option><option>Academic</option><option>Community</option></select></div>
       </div>
-      <label>Image URL</label><input required name="url" placeholder="https://...">
+      <label>Media URL</label><input required name="url" id="galleryMediaInput" placeholder="https://...">
+      <div class="upload-note">Images and videos are supported. Use the uploader for files from your computer.</div>
+      <div class="upload-panel" data-upload-target="galleryMediaInput" data-preview-target="galleryMediaPreview" data-file-input="galleryMediaFile" data-folder="gallery" data-accept="image/*,video/*" data-upload-kind="media">
+        <div class="upload-dropzone" data-role="dropzone" tabindex="0">
+          <div><strong>Drag and drop gallery image or video here</strong></div>
+          <div class="muted">or click to browse from your computer</div>
+        </div>
+        <input type="file" id="galleryMediaFile" accept="image/*,video/*" hidden>
+        <div class="upload-preview" id="galleryMediaPreview"></div>
+      </div>
       <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
         <button type="button" class="ghost" onclick="closeModal('modalPhoto')">Cancel</button>
         <button class="primary" type="submit">Add</button>
@@ -470,7 +506,16 @@
         <div><label>Date</label><input type="date" name="date" id="editPhotoDate"></div>
         <div><label>Category</label><select name="category" id="editPhotoCategory"><option>Cultural</option><option>Sports</option><option>Academic</option><option>Community</option></select></div>
       </div>
-      <label>Image URL</label><input name="url" id="editPhotoUrl">
+      <label>Media URL</label><input name="url" id="editPhotoUrl" placeholder="https://...">
+      <div class="upload-note">Images and videos are supported. Use the uploader for files from your computer.</div>
+      <div class="upload-panel" data-upload-target="editPhotoUrl" data-preview-target="editPhotoPreview" data-file-input="editPhotoFile" data-folder="gallery" data-accept="image/*,video/*" data-upload-kind="media">
+        <div class="upload-dropzone" data-role="dropzone" tabindex="0">
+          <div><strong>Drag and drop gallery image or video here</strong></div>
+          <div class="muted">or click to browse from your computer</div>
+        </div>
+        <input type="file" id="editPhotoFile" accept="image/*,video/*" hidden>
+        <div class="upload-preview" id="editPhotoPreview"></div>
+      </div>
       <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
         <button type="button" class="ghost" style="color:var(--red)" onclick="deletePhotoEdit()">Delete</button>
         <button type="button" class="ghost" onclick="closeModal('modalEditPhoto')">Cancel</button>
@@ -480,7 +525,9 @@
   </div>
 </div>
 
-<div class="lightbox" id="lightbox" onclick="this.classList.remove('active')"><img alt=""></div>
+<div class="lightbox" id="lightbox" onclick="if(event.target===this){this.classList.remove('active')}" aria-hidden="true">
+  <div class="lightbox-stage" id="lightboxStage"></div>
+</div>
 
 <!-- Toast notification -->
 <div id="toast" class="toast"></div>
