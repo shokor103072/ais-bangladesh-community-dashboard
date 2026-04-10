@@ -275,16 +275,20 @@ document.getElementById('formCommunityVisibility')?.addEventListener('submit', e
     return { q: (parts[0] || '').trim(), a: parts.slice(1).join('|').trim() };
   }).filter(x => x.q && x.a);
   publicVisibility = visibility;
-  communityLinksData = links;
   onboardSteps = steps.length ? steps : defaultOnboardSteps;
   faqData = faqs.length ? faqs : defaultFaqData;
   store.set(VISIBILITY_KEY, publicVisibility);
-  store.set(COMMUNITY_LINKS_KEY, communityLinksData);
+  if (typeof window.setCommunityLinks === 'function') {
+    window.setCommunityLinks(links);
+  } else {
+    communityLinksData = links;
+    store.set(COMMUNITY_LINKS_KEY, communityLinksData);
+    if (typeof window.saveSiteSettingToCloud === 'function') {
+      window.saveSiteSettingToCloud('community_links', communityLinksData).catch(e => console.warn('Community links cloud save failed:', e));
+    }
+  }
   store.set(ONBOARD_STEPS_KEY, onboardSteps);
   store.set(FAQ_KEY, faqData);
-  if (typeof window.saveSiteSettingToCloud === 'function') {
-    window.saveSiteSettingToCloud('community_links', communityLinksData).catch(e => console.warn('Community links cloud save failed:', e));
-  }
   logAction('Public settings updated', 'Visibility, links, onboarding, or FAQ changed');
   showToast('Public settings updated');
   reRenderAll();

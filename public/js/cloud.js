@@ -246,6 +246,7 @@
       if (typeof refreshDirectoryMediaFromCloud === 'function') refreshDirectoryMediaFromCloud(true);
       if (typeof refreshAdminAccountsFromCloud === 'function') refreshAdminAccountsFromCloud(false);
       if (typeof refreshSiteSettingsFromCloud === 'function') refreshSiteSettingsFromCloud();
+      if (typeof refreshSiteSettingsFromCloud === 'function') refreshSiteSettingsFromCloud();
     } catch (err) {
       console.error('Supabase init failed:', err);
       state.ready = false;
@@ -476,6 +477,7 @@
 
       if (typeof refreshDirectoryMediaFromCloud === 'function') refreshDirectoryMediaFromCloud(true);
       if (typeof refreshAdminAccountsFromCloud === 'function') refreshAdminAccountsFromCloud(false);
+      if (typeof refreshSiteSettingsFromCloud === 'function') refreshSiteSettingsFromCloud();
     } catch (err) {
       setContentCloudMessage(String(err.message || err), 'warn');
     }
@@ -483,9 +485,10 @@
 
   window.pullContentFromCloud = async function () {
     try {
-      setContentCloudMessage('Refreshing members, committee, alumni, events, gallery, and admin accounts from Supabase...', 'muted');
+      setContentCloudMessage('Refreshing members, committee, alumni, events, gallery, admin accounts, and shared settings from Supabase...', 'muted');
       if (typeof refreshDirectoryMediaFromCloud === 'function') await refreshDirectoryMediaFromCloud(true);
       if (typeof refreshAdminAccountsFromCloud === 'function') await refreshAdminAccountsFromCloud(false);
+      if (typeof refreshSiteSettingsFromCloud === 'function') await refreshSiteSettingsFromCloud();
       setContentCloudMessage('Cloud content refreshed on this browser.', 'success');
     } catch (err) {
       setContentCloudMessage(String(err.message || err), 'warn');
@@ -528,6 +531,7 @@
       try {
         if (typeof refreshDirectoryMediaFromCloud === 'function') await refreshDirectoryMediaFromCloud(false);
         if (typeof refreshAdminAccountsFromCloud === 'function') await refreshAdminAccountsFromCloud(false);
+        if (typeof refreshSiteSettingsFromCloud === 'function') await refreshSiteSettingsFromCloud();
       } catch (err) {
         console.warn('Cloud refresh on focus failed:', err);
       }

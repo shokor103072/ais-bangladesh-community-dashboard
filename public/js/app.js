@@ -14,27 +14,115 @@ let galleryData = store.get('utp_gallery', gallery);
 let rsvps = store.get('utp_rsvps', {});
 const defaultConcerns = [];
 
-/* ===== Committee Message ===== */
+/* ===== Shared community content ===== */
+const SHARED_CONTENT_EVENT_IDS = Object.freeze({
+  committeeMessage: 910000000001,
+  communityLinks: 910000000002
+});
 let committeeMessage = store.get('utp_committee_message', { text: '', author: '', active: false });
 window.getCommitteeMessage = () => committeeMessage;
-window.setCommitteeMessage = function(text, author, active) {
-  committeeMessage = { text: (text || '').trim(), author: (author || '').trim(), active: !!active };
-  store.set('utp_committee_message', committeeMessage);
-  if (typeof window.saveSiteSettingToCloud === 'function') {
-    window.saveSiteSettingToCloud('committee_message', committeeMessage).catch(e => console.warn('Settings cloud save failed:', e));
+window.getCommunityLinks = () => ({ ...communityLinksData });
+function rerenderSharedContentViews() {
+  if (typeof renderHome === 'function') renderHome();
+  if (typeof renderEvents === 'function') renderEvents();
+}
+function normalizeCommunityLinks(links = {}) {
+  return {
+    whatsapp: String(links.whatsapp || '').trim(),
+    facebook: String(links.facebook || '').trim(),
+    instagram: String(links.instagram || '').trim()
+  };
+}
+function buildSharedContentEventRow(kind) {
+  if (kind === 'committee_message') {
+    return {
+      id: SHARED_CONTENT_EVENT_IDS.committeeMessage,
+      _metaType: 'committee_message',
+      text: String(committeeMessage?.text || '').trim(),
+      author: String(committeeMessage?.author || '').trim(),
+      active: !!committeeMessage?.active,
+      system: true,
+      updatedAt: new Date().toISOString()
+    };
   }
-  renderHome();
-  renderEvents();
-};
-
-window.setCommunityLinks = function(links) {
-  communityLinksData = { ...defaultCommunityLinks, ...(links || {}) };
+  if (kind === 'community_links') {
+    return {
+      id: SHARED_CONTENT_EVENT_IDS.communityLinks,
+      _metaType: 'community_links',
+      ...normalizeCommunityLinks(communityLinksData),
+      system: true,
+      updatedAt: new Date().toISOString()
+    };
+  }
+  return null;
+}
+function applySharedContentEventRow(item) {
+  if (!item || !item._metaType) return false;
+  if (item._metaType === 'committee_message') {
+    committeeMessage = {
+      text: String(item.text || '').trim(),
+      author: String(item.author || '').trim(),
+      active: !!item.active
+    };
+    store.set('utp_committee_message', committeeMessage);
+    return true;
+  }
+  if (item._metaType === 'community_links') {
+    communityLinksData = { ...defaultCommunityLinks, ...normalizeCommunityLinks(item) };
+    store.set('utp_community_links', communityLinksData);
+    return true;
+  }
+  return false;
+}
+function extractSharedContentFromEvents(items = []) {
+  let changed = false;
+  const normalEvents = [];
+  for (const item of Array.isArray(items) ? items : []) {
+    const id = Number(item && item.id);
+    const inferredType = item && item._metaType
+      ? item._metaType
+      : id === SHARED_CONTENT_EVENT_IDS.committeeMessage
+        ? 'committee_message'
+        : id === SHARED_CONTENT_EVENT_IDS.communityLinks
+          ? 'community_links'
+          : '';
+    if (inferredType) {
+      changed = applySharedContentEventRow({ ...item, _metaType: inferredType }) || changed;
+      continue;
+    }
+    normalEvents.push(item);
+  }
+  return { normalEvents, changed };
+}
+async function syncSharedContentRowToCloud(kind) {
+  const row = buildSharedContentEventRow(kind);
+  if (!row || typeof window.saveEventToCloud !== 'function') return row;
+  try {
+    await window.saveEventToCloud(row);
+  } catch (err) {
+    console.warn(`Shared content sync failed for ${kind}:`, err);
+  }
+  return row;
+}
+window.setCommunityLinks = function(links = {}, options = {}) {
+  communityLinksData = { ...defaultCommunityLinks, ...normalizeCommunityLinks(links) };
   store.set('utp_community_links', communityLinksData);
-  if (typeof window.saveSiteSettingToCloud === 'function') {
+  if (options.saveSiteSetting !== false && typeof window.saveSiteSettingToCloud === 'function') {
     window.saveSiteSettingToCloud('community_links', communityLinksData).catch(e => console.warn('Community links cloud save failed:', e));
   }
-  renderHome();
-  renderEvents();
+  if (options.syncEventRow !== false) syncSharedContentRowToCloud('community_links');
+  rerenderSharedContentViews();
+  return communityLinksData;
+};
+window.setCommitteeMessage = function(text, author, active, options = {}) {
+  committeeMessage = { text: (text || '').trim(), author: (author || '').trim(), active: !!active };
+  store.set('utp_committee_message', committeeMessage);
+  if (options.saveSiteSetting !== false && typeof window.saveSiteSettingToCloud === 'function') {
+    window.saveSiteSettingToCloud('committee_message', committeeMessage).catch(e => console.warn('Settings cloud save failed:', e));
+  }
+  if (options.syncEventRow !== false) syncSharedContentRowToCloud('committee_message');
+  rerenderSharedContentViews();
+  return committeeMessage;
 };
 
 /* ===== Cloud settings refresh ===== */
@@ -54,7 +142,7 @@ window.refreshSiteSettingsFromCloud = async function () {
       store.set('utp_committee_message', committeeMessage);
       changed = true;
     }
-    if (changed) { renderHome(); renderEvents(); }
+    if (changed) { rerenderSharedContentViews(); }
   } catch (e) { console.warn('refreshSiteSettingsFromCloud failed:', e); }
 };
 
@@ -273,7 +361,11 @@ window.getCloudContentSnapshot = function () {
     members: Array.isArray(membersData) ? membersData : [],
     committee: Array.isArray(committeeData) ? committeeData : [],
     alumni: Array.isArray(alumniData) ? alumniData : [],
-    events: Array.isArray(eventsData) ? eventsData : [],
+    events: [
+      ...(Array.isArray(eventsData) ? eventsData : []),
+      buildSharedContentEventRow('committee_message'),
+      buildSharedContentEventRow('community_links')
+    ].filter(Boolean),
     gallery: Array.isArray(galleryData) ? galleryData : [],
     adminAccounts: typeof window.getAdminAccountsSnapshot === 'function' ? window.getAdminAccountsSnapshot() : []
   };
@@ -283,7 +375,11 @@ window.applyCloudContentSnapshot = function (payload = {}, forceRender = true) {
   if (Array.isArray(payload.members)) { membersData = payload.members; persistMembersLocal(); }
   if (Array.isArray(payload.committee)) { committeeData = payload.committee; persistCommitteeLocal(); }
   if (Array.isArray(payload.alumni)) { alumniData = payload.alumni; persistAlumniLocal(); }
-  if (Array.isArray(payload.events)) { eventsData = payload.events; persistEventsLocal(); }
+  if (Array.isArray(payload.events)) {
+    const extracted = extractSharedContentFromEvents(payload.events);
+    eventsData = extracted.normalEvents;
+    persistEventsLocal();
+  }
   if (Array.isArray(payload.gallery)) { galleryData = payload.gallery; persistGalleryLocal(); }
   if (Array.isArray(payload.adminAccounts) && typeof window.applyAdminAccountsSnapshot === 'function') {
     window.applyAdminAccountsSnapshot(payload.adminAccounts, false);
@@ -322,10 +418,13 @@ async function refreshDirectoryMediaFromCloud(forceRender = true) {
         persistAlumniLocal();
       }
     }
+    let sharedContentChanged = false;
     if (typeof window.loadEventsFromCloud === 'function') {
       const cloudEvents = await window.loadEventsFromCloud();
       if (Array.isArray(cloudEvents) && (cloudEvents.length || !eventsData.length)) {
-        eventsData = cloudEvents;
+        const extracted = extractSharedContentFromEvents(cloudEvents);
+        eventsData = extracted.normalEvents;
+        sharedContentChanged = !!extracted.changed;
         persistEventsLocal();
       }
     }
@@ -336,10 +435,7 @@ async function refreshDirectoryMediaFromCloud(forceRender = true) {
         persistGalleryLocal();
       }
     }
-    if (typeof window.refreshSiteSettingsFromCloud === 'function') {
-      await window.refreshSiteSettingsFromCloud();
-    }
-    if (forceRender) {
+    if (forceRender || sharedContentChanged) {
       renderHome();
       renderMembers();
       renderCommittee();
@@ -358,6 +454,13 @@ const defaultPublicVisibility = { email: true, phone: true, birthday: true, inta
 let publicVisibility = store.get('utp_public_visibility', defaultPublicVisibility);
 const defaultCommunityLinks = { whatsapp: '', facebook: '', instagram: '' };
 let communityLinksData = store.get('utp_community_links', defaultCommunityLinks);
+(() => {
+  const extracted = extractSharedContentFromEvents(eventsData);
+  if (Array.isArray(extracted.normalEvents)) {
+    eventsData = extracted.normalEvents;
+    persistEventsLocal();
+  }
+})();
 const defaultOnboardSteps = [
   'Create UTP email & access',
   'Join WhatsApp & Telegram groups',
@@ -591,21 +694,6 @@ function communityLinksHtml() {
   ].filter(Boolean);
   return links.length ? links.join('') : '<span class="muted">Community links will appear here after admin setup.</span>';
 }
-function committeeMessageBoxHtml(showEmpty = true) {
-  if (committeeMessage && committeeMessage.active && committeeMessage.text) {
-    return '<div class="committee-msg-box event-settings-display">'
-      + '<div class="msg-label">📢 Message from the Committee</div>'
-      + '<div class="msg-body">' + escapeHtml(committeeMessage.text) + '</div>'
-      + (committeeMessage.author ? '<div class="msg-author">&mdash; ' + escapeHtml(committeeMessage.author) + '</div>' : '')
-      + '</div>';
-  }
-  return showEmpty ? '<div class="empty-state event-settings-empty">No active community message yet.</div>' : '';
-}
-
-function communityLinksEditorPreviewHtml() {
-  return communityLinksHtml();
-}
-
 function topDepartments(limit = 4) {
   const counts = membersData.reduce((acc, m) => {
     acc[m.department] = (acc[m.department] || 0) + 1;
@@ -679,7 +767,13 @@ function renderHome() {
         + '</div>';
     })()}
 
-    ${committeeMessageBoxHtml(false)}
+    ${committeeMessage && committeeMessage.active && committeeMessage.text
+      ? '<div class="committee-msg-box">'
+        + '<div class="msg-label">📢 Message from the Committee</div>'
+        + '<div class="msg-body">' + escapeHtml(committeeMessage.text) + '</div>'
+        + (committeeMessage.author ? '<div class="msg-author">&mdash; ' + escapeHtml(committeeMessage.author) + '</div>' : '')
+        + '</div>'
+      : ''}
 
     <div class="info-strip">
       <div class="card"><div class="section-kicker">Students</div><div class="stat"><div class="icon">🎓</div><div><div class="v">${ug}</div><div class="l">Undergraduate</div></div></div></div>
@@ -1027,56 +1121,73 @@ function renderAlumni() {
 function renderEvents() {
   const page = document.getElementById('page-events');
   const upcomingCount = eventsData.filter(e => new Date(e.date) >= new Date()).length;
+  const currentLinks = normalizeCommunityLinks(communityLinksData);
   page.innerHTML = `
-    <div class="page-banner"><h2>Events & Announcements</h2><p>Community programs, important updates, and RSVP tracking in one view.</p></div>
+    <div class="page-banner"><h2>Events & Announcements</h2><p>Community programs, important updates, shared links, and committee updates in one view.</p></div>
     <div class="info-strip" style="margin-top:0;margin-bottom:12px">
       <div class="card"><div class="section-kicker">Upcoming</div><div class="stat"><div class="icon">📅</div><div><div class="v">${upcomingCount}</div><div class="l">Scheduled events</div></div></div></div>
       <div class="card"><div class="section-kicker">Announcements</div><div class="stat"><div class="icon">📢</div><div><div class="v">${announcementsData.length}</div><div class="l">Posted updates</div></div></div></div>
       <div class="card"><div class="section-kicker">Pinned</div><div class="stat"><div class="icon">📌</div><div><div class="v">${announcementsData.filter(a => a.pinned).length}</div><div class="l">Pinned items</div></div></div></div>
       <div class="card"><div class="section-kicker">Interest</div><div class="stat"><div class="icon">🙋</div><div><div class="v">${eventsData.reduce((t, e) => t + num(e.rsvp), 0)}</div><div class="l">RSVP total</div></div></div></div>
     </div>
+
+    <div class="grid grid-2" style="margin-bottom:12px">
+      <div class="card cover-card">
+        <div class="section-title"><h2>📢 Community message</h2><span class="chip">Home synced</span></div>
+        <div class="muted" style="margin-bottom:10px">Anything saved here will also appear on the Home page.</div>
+        <div class="committee-msg-box" style="margin:0 0 12px 0;display:${committeeMessage && committeeMessage.active && committeeMessage.text ? 'block' : 'none'}">
+          <div class="msg-label">📢 Message from the Committee</div>
+          <div class="msg-body">${escapeHtml(committeeMessage?.text || '') || '<span class="muted">No active message yet.</span>'}</div>
+          ${committeeMessage?.author ? `<div class="msg-author">&mdash; ${escapeHtml(committeeMessage.author)}</div>` : ''}
+        </div>
+        ${adminMode() ? `
+          <form id="eventsCommunityMessageForm" class="admin-inline-form">
+            <label>Message</label>
+            <textarea id="eventsCommunityMessageText" rows="6" placeholder="Write the committee message for the whole community...">${escapeHtml(committeeMessage?.text || '')}</textarea>
+            <div class="grid grid-2" style="margin-top:10px">
+              <div>
+                <label>Author</label>
+                <input id="eventsCommunityMessageAuthor" value="${escapeHtml(committeeMessage?.author || '')}" placeholder="e.g. General Secretary, AIS-BD, UTP">
+              </div>
+              <div style="display:flex;align-items:flex-end">
+                <label style="display:flex;align-items:center;gap:8px;margin:0"><input id="eventsCommunityMessageActive" type="checkbox" ${committeeMessage?.active ? 'checked' : ''}> Show on Home</label>
+              </div>
+            </div>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px">
+              <button class="primary" type="submit">Save community message</button>
+              <button class="ghost" type="button" id="eventsCommunityMessageClear">Clear</button>
+            </div>
+          </form>` : (!committeeMessage?.active || !committeeMessage?.text ? '<div class="empty-state">No active community message right now.</div>' : '')}
+      </div>
+
+      <div class="card cover-card">
+        <div class="section-title"><h2>🔗 Quick links</h2><span class="chip">Home synced</span></div>
+        <div class="muted" style="margin-bottom:10px">Shared links saved here will also appear on the Home page.</div>
+        <div class="inline-metrics" style="margin-bottom:12px">${communityLinksHtml()}</div>
+        ${adminMode() ? `
+          <form id="eventsQuickLinksForm" class="admin-inline-form">
+            <label>WhatsApp</label>
+            <input id="eventsQuickLinkWhatsapp" value="${escapeHtml(currentLinks.whatsapp)}" placeholder="https://chat.whatsapp.com/...">
+            <label style="margin-top:10px">Facebook</label>
+            <input id="eventsQuickLinkFacebook" value="${escapeHtml(currentLinks.facebook)}" placeholder="https://facebook.com/...">
+            <label style="margin-top:10px">Instagram</label>
+            <input id="eventsQuickLinkInstagram" value="${escapeHtml(currentLinks.instagram)}" placeholder="https://instagram.com/...">
+            <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px">
+              <button class="primary" type="submit">Save quick links</button>
+              <button class="ghost" type="button" id="eventsQuickLinksClear">Clear all</button>
+            </div>
+          </form>` : ''}
+      </div>
+    </div>
+
     <div class="grid grid-2">
       <div class="card cover-card">
-        <div class="section-title"><h2>Events</h2>${adminMode() ? '<button class="primary" onclick="openModal(\'modalEvent\')">+ Add Event</button>' : ''}</div>
+        <div class="section-title"><h2>Events</h2>${adminMode() ? '<button class="primary" onclick="openModal(&#39;modalEvent&#39;)">+ Add Event</button>' : ''}</div>
         <div class="list" id="eventsList"></div>
       </div>
       <div class="card cover-card">
-        <div class="section-title"><h2>Announcements</h2>${adminMode() ? '<button class="primary" onclick="openModal(\'modalAnnounce\')">+ Add</button>' : ''}</div>
+        <div class="section-title"><h2>Announcements</h2>${adminMode() ? '<button class="primary" onclick="openModal(&#39;modalAnnounce&#39;)">+ Add</button>' : ''}</div>
         <div class="list" id="annList"></div>
-      </div>
-    </div>
-    <div class="grid grid-2" style="margin-top:14px">
-      <div class="card cover-card">
-        <div class="section-title"><h2>💬 Community message</h2><span class="chip">Home banner</span></div>
-        <div id="eventsCommunityMessageBox">${committeeMessageBoxHtml(true)}</div>
-        ${adminMode() ? `
-          <form id="eventCommitteeMessageForm" class="event-settings-form">
-            <div class="section-kicker">Edit from Events page</div>
-            <textarea name="text" rows="5" placeholder="Write a community message for the home page...">${escapeHtml(committeeMessage.text || '')}</textarea>
-            <div class="event-settings-grid">
-              <input type="text" name="author" placeholder="Author / role" value="${escapeHtml(committeeMessage.author || '')}">
-              <label class="event-settings-toggle"><input type="checkbox" id="eventCommitteeMessageActive" ${committeeMessage.active ? 'checked' : ''}> Show on home page</label>
-            </div>
-            <div class="inline-metrics">
-              <button class="primary" type="submit">Save message</button>
-              <span class="muted">Any admin update here will also appear on Home.</span>
-            </div>
-          </form>` : ''}
-      </div>
-      <div class="card cover-card">
-        <div class="section-title"><h2>🔗 Quick links</h2><span class="chip">Home shortcuts</span></div>
-        <div class="inline-metrics" id="eventsQuickLinksBox">${communityLinksEditorPreviewHtml()}</div>
-        ${adminMode() ? `
-          <form id="eventQuickLinksForm" class="event-settings-form">
-            <div class="section-kicker">Edit from Events page</div>
-            <input type="url" name="whatsapp" placeholder="WhatsApp link" value="${escapeHtml(communityLinksData.whatsapp || '')}">
-            <input type="url" name="facebook" placeholder="Facebook link" value="${escapeHtml(communityLinksData.facebook || '')}">
-            <input type="url" name="instagram" placeholder="Instagram link" value="${escapeHtml(communityLinksData.instagram || '')}">
-            <div class="inline-metrics">
-              <button class="primary" type="submit">Save quick links</button>
-              <span class="muted">These links sync to the Home page automatically.</span>
-            </div>
-          </form>` : ''}
       </div>
     </div>`;
 
@@ -1110,30 +1221,31 @@ function renderEvents() {
       <div class="admin-actions"><button class="btn-edit" data-action="edit-announcement" data-id="${a.id}" type="button">✏️ Edit</button><button class="btn-delete" data-action="delete-announcement" data-id="${a.id}" type="button">🗑️ Delete</button></div>
     </div>`).join('') || `<div class="empty-state">No announcements available.</div>`;
 
-  const messageForm = page.querySelector('#eventCommitteeMessageForm');
-  if (messageForm) {
-    messageForm.addEventListener('submit', e => {
-      e.preventDefault();
-      if (!adminMode()) return;
-      const text = String(messageForm.text.value || '').trim();
-      const author = String(messageForm.author.value || '').trim();
-      const active = !!page.querySelector('#eventCommitteeMessageActive')?.checked;
+  if (adminMode()) {
+    page.querySelector('#eventsCommunityMessageForm')?.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const text = document.getElementById('eventsCommunityMessageText')?.value || '';
+      const author = document.getElementById('eventsCommunityMessageAuthor')?.value || '';
+      const active = !!document.getElementById('eventsCommunityMessageActive')?.checked;
       window.setCommitteeMessage(text, author, active);
-      showToast('Community message updated');
+      showToast('Community message saved');
     });
-  }
-
-  const quickLinksForm = page.querySelector('#eventQuickLinksForm');
-  if (quickLinksForm) {
-    quickLinksForm.addEventListener('submit', e => {
-      e.preventDefault();
-      if (!adminMode()) return;
+    page.querySelector('#eventsCommunityMessageClear')?.addEventListener('click', () => {
+      window.setCommitteeMessage('', '', false);
+      showToast('Community message cleared');
+    });
+    page.querySelector('#eventsQuickLinksForm')?.addEventListener('submit', async (event) => {
+      event.preventDefault();
       window.setCommunityLinks({
-        whatsapp: String(quickLinksForm.whatsapp.value || '').trim(),
-        facebook: String(quickLinksForm.facebook.value || '').trim(),
-        instagram: String(quickLinksForm.instagram.value || '').trim()
+        whatsapp: document.getElementById('eventsQuickLinkWhatsapp')?.value || '',
+        facebook: document.getElementById('eventsQuickLinkFacebook')?.value || '',
+        instagram: document.getElementById('eventsQuickLinkInstagram')?.value || ''
       });
-      showToast('Quick links updated');
+      showToast('Quick links saved');
+    });
+    page.querySelector('#eventsQuickLinksClear')?.addEventListener('click', () => {
+      window.setCommunityLinks({ whatsapp: '', facebook: '', instagram: '' });
+      showToast('Quick links cleared');
     });
   }
 
@@ -1724,5 +1836,6 @@ renderOnboarding();
 renderEmergency();
 showPage('home');
 refreshDirectoryMediaFromCloud(false);
+if (typeof refreshSiteSettingsFromCloud === 'function') refreshSiteSettingsFromCloud();
 
 document.getElementById('footerYear') && (document.getElementById('footerYear').textContent = new Date().getFullYear());
