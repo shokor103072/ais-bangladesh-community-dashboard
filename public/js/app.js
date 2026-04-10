@@ -143,15 +143,20 @@ let faqData = store.get('utp_faqs', defaultFaqData);
 
 /* --------- View Switcher --------- */
 const viewBadge = document.getElementById('viewBadge');
+const allowedViewModes = new Set(['auto', 'desktop']);
+function normalizeViewMode(mode) {
+  return allowedViewModes.has(mode) ? mode : 'auto';
+}
 function applyView(mode) {
+  const safeMode = normalizeViewMode(mode);
   document.body.classList.remove('view-auto', 'view-desktop', 'view-mobile');
-  document.body.classList.add('view-' + mode);
-  localStorage.setItem('utp_view_mode', mode);
-  document.querySelectorAll('.view-switcher button').forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
-  viewBadge.textContent = 'Viewing: ' + mode.charAt(0).toUpperCase() + mode.slice(1);
+  document.body.classList.add('view-' + safeMode);
+  localStorage.setItem('utp_view_mode', safeMode);
+  document.querySelectorAll('.view-switcher button').forEach(b => b.classList.toggle('active', b.dataset.mode === safeMode));
+  viewBadge.textContent = 'Viewing: ' + safeMode.charAt(0).toUpperCase() + safeMode.slice(1);
 }
 (function initView() {
-  const saved = localStorage.getItem('utp_view_mode') || 'auto';
+  const saved = normalizeViewMode(localStorage.getItem('utp_view_mode') || 'auto');
   applyView(saved);
   document.querySelectorAll('.view-switcher button').forEach(btn => btn.addEventListener('click', () => applyView(btn.dataset.mode)));
 })();
