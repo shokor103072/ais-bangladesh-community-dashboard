@@ -14,115 +14,16 @@ let galleryData = store.get('utp_gallery', gallery);
 let rsvps = store.get('utp_rsvps', {});
 const defaultConcerns = [];
 
-/* ===== Shared community content ===== */
-const SHARED_CONTENT_EVENT_IDS = Object.freeze({
-  committeeMessage: 910000000001,
-  communityLinks: 910000000002
-});
+/* ===== Committee Message ===== */
 let committeeMessage = store.get('utp_committee_message', { text: '', author: '', active: false });
 window.getCommitteeMessage = () => committeeMessage;
-window.getCommunityLinks = () => ({ ...communityLinksData });
-function rerenderSharedContentViews() {
-  if (typeof renderHome === 'function') renderHome();
-  if (typeof renderEvents === 'function') renderEvents();
-}
-function normalizeCommunityLinks(links = {}) {
-  return {
-    whatsapp: String(links.whatsapp || '').trim(),
-    facebook: String(links.facebook || '').trim(),
-    instagram: String(links.instagram || '').trim()
-  };
-}
-function buildSharedContentEventRow(kind) {
-  if (kind === 'committee_message') {
-    return {
-      id: SHARED_CONTENT_EVENT_IDS.committeeMessage,
-      _metaType: 'committee_message',
-      text: String(committeeMessage?.text || '').trim(),
-      author: String(committeeMessage?.author || '').trim(),
-      active: !!committeeMessage?.active,
-      system: true,
-      updatedAt: new Date().toISOString()
-    };
-  }
-  if (kind === 'community_links') {
-    return {
-      id: SHARED_CONTENT_EVENT_IDS.communityLinks,
-      _metaType: 'community_links',
-      ...normalizeCommunityLinks(communityLinksData),
-      system: true,
-      updatedAt: new Date().toISOString()
-    };
-  }
-  return null;
-}
-function applySharedContentEventRow(item) {
-  if (!item || !item._metaType) return false;
-  if (item._metaType === 'committee_message') {
-    committeeMessage = {
-      text: String(item.text || '').trim(),
-      author: String(item.author || '').trim(),
-      active: !!item.active
-    };
-    store.set('utp_committee_message', committeeMessage);
-    return true;
-  }
-  if (item._metaType === 'community_links') {
-    communityLinksData = { ...defaultCommunityLinks, ...normalizeCommunityLinks(item) };
-    store.set('utp_community_links', communityLinksData);
-    return true;
-  }
-  return false;
-}
-function extractSharedContentFromEvents(items = []) {
-  let changed = false;
-  const normalEvents = [];
-  for (const item of Array.isArray(items) ? items : []) {
-    const id = Number(item && item.id);
-    const inferredType = item && item._metaType
-      ? item._metaType
-      : id === SHARED_CONTENT_EVENT_IDS.committeeMessage
-        ? 'committee_message'
-        : id === SHARED_CONTENT_EVENT_IDS.communityLinks
-          ? 'community_links'
-          : '';
-    if (inferredType) {
-      changed = applySharedContentEventRow({ ...item, _metaType: inferredType }) || changed;
-      continue;
-    }
-    normalEvents.push(item);
-  }
-  return { normalEvents, changed };
-}
-async function syncSharedContentRowToCloud(kind) {
-  const row = buildSharedContentEventRow(kind);
-  if (!row || typeof window.saveEventToCloud !== 'function') return row;
-  try {
-    await window.saveEventToCloud(row);
-  } catch (err) {
-    console.warn(`Shared content sync failed for ${kind}:`, err);
-  }
-  return row;
-}
-window.setCommunityLinks = function(links = {}, options = {}) {
-  communityLinksData = { ...defaultCommunityLinks, ...normalizeCommunityLinks(links) };
-  store.set('utp_community_links', communityLinksData);
-  if (options.saveSiteSetting !== false && typeof window.saveSiteSettingToCloud === 'function') {
-    window.saveSiteSettingToCloud('community_links', communityLinksData).catch(e => console.warn('Community links cloud save failed:', e));
-  }
-  if (options.syncEventRow !== false) syncSharedContentRowToCloud('community_links');
-  rerenderSharedContentViews();
-  return communityLinksData;
-};
-window.setCommitteeMessage = function(text, author, active, options = {}) {
+window.setCommitteeMessage = function(text, author, active) {
   committeeMessage = { text: (text || '').trim(), author: (author || '').trim(), active: !!active };
   store.set('utp_committee_message', committeeMessage);
-  if (options.saveSiteSetting !== false && typeof window.saveSiteSettingToCloud === 'function') {
+  if (typeof window.saveSiteSettingToCloud === 'function') {
     window.saveSiteSettingToCloud('committee_message', committeeMessage).catch(e => console.warn('Settings cloud save failed:', e));
   }
-  if (options.syncEventRow !== false) syncSharedContentRowToCloud('committee_message');
-  rerenderSharedContentViews();
-  return committeeMessage;
+  renderHome();
 };
 
 /* ===== Cloud settings refresh ===== */
@@ -142,45 +43,8 @@ window.refreshSiteSettingsFromCloud = async function () {
       store.set('utp_committee_message', committeeMessage);
       changed = true;
     }
-    if (Array.isArray(settings.emergency_contacts)) {
-      emergencyContactsData = settings.emergency_contacts;
-      store.set('utp_emergency_contacts', emergencyContactsData);
-      changed = true;
-    }
-    if (Array.isArray(settings.emergency_quick_links)) {
-      emergencyQuickLinksData = settings.emergency_quick_links;
-      store.set('utp_emergency_quick_links', emergencyQuickLinksData);
-      changed = true;
-    }
-    if (changed) { rerenderSharedContentViews(); renderEmergency(); }
+    if (changed) { renderHome(); }
   } catch (e) { console.warn('refreshSiteSettingsFromCloud failed:', e); }
-};
-
-window.setEmergencyContacts = function (items = [], options = {}) {
-  emergencyContactsData = (Array.isArray(items) ? items : []).map((item, index) => ({
-    title: String((item && item.title) || (defaultEmergencyContacts[index] && defaultEmergencyContacts[index].title) || '').trim(),
-    phone: String((item && item.phone) || '').trim(),
-    description: String((item && item.description) || '').trim()
-  }));
-  store.set('utp_emergency_contacts', emergencyContactsData);
-  if (options.saveSiteSetting !== false && typeof window.saveSiteSettingToCloud === 'function') {
-    window.saveSiteSettingToCloud('emergency_contacts', emergencyContactsData).catch(e => console.warn('Emergency contacts cloud save failed:', e));
-  }
-  if (options.render !== false) renderEmergency();
-  return emergencyContactsData;
-};
-
-window.setEmergencyQuickLinks = function (items = [], options = {}) {
-  emergencyQuickLinksData = (Array.isArray(items) ? items : []).map((item, index) => ({
-    label: String((item && item.label) || (defaultEmergencyQuickLinks[index] && defaultEmergencyQuickLinks[index].label) || '').trim(),
-    url: String((item && item.url) || '').trim()
-  }));
-  store.set('utp_emergency_quick_links', emergencyQuickLinksData);
-  if (options.saveSiteSetting !== false && typeof window.saveSiteSettingToCloud === 'function') {
-    window.saveSiteSettingToCloud('emergency_quick_links', emergencyQuickLinksData).catch(e => console.warn('Emergency quick links cloud save failed:', e));
-  }
-  if (options.render !== false) renderEmergency();
-  return emergencyQuickLinksData;
 };
 
 /* ===== Themes ===== */
@@ -391,8 +255,6 @@ function persistMembersLocal() { store.set('utp_members', membersData); }
 function persistCommitteeLocal() { store.set('utp_committee', committeeData); }
 function persistAlumniLocal() { store.set('utp_alumni', alumniData); }
 function persistEventsLocal() { store.set('utp_events', eventsData); }
-function persistAnnouncementsLocal() { store.set('utp_announcements', announcementsData); }
-function persistAchievementsLocal() { store.set('utp_achievements', achievementsData); }
 function persistGalleryLocal() { store.set('utp_gallery', galleryData); }
 
 window.getCloudContentSnapshot = function () {
@@ -400,13 +262,7 @@ window.getCloudContentSnapshot = function () {
     members: Array.isArray(membersData) ? membersData : [],
     committee: Array.isArray(committeeData) ? committeeData : [],
     alumni: Array.isArray(alumniData) ? alumniData : [],
-    events: [
-      ...(Array.isArray(eventsData) ? eventsData : []),
-      buildSharedContentEventRow('committee_message'),
-      buildSharedContentEventRow('community_links')
-    ].filter(Boolean),
-    announcements: Array.isArray(announcementsData) ? announcementsData : [],
-    achievements: Array.isArray(achievementsData) ? achievementsData : [],
+    events: Array.isArray(eventsData) ? eventsData : [],
     gallery: Array.isArray(galleryData) ? galleryData : [],
     adminAccounts: typeof window.getAdminAccountsSnapshot === 'function' ? window.getAdminAccountsSnapshot() : []
   };
@@ -416,13 +272,7 @@ window.applyCloudContentSnapshot = function (payload = {}, forceRender = true) {
   if (Array.isArray(payload.members)) { membersData = payload.members; persistMembersLocal(); }
   if (Array.isArray(payload.committee)) { committeeData = payload.committee; persistCommitteeLocal(); }
   if (Array.isArray(payload.alumni)) { alumniData = payload.alumni; persistAlumniLocal(); }
-  if (Array.isArray(payload.events)) {
-    const extracted = extractSharedContentFromEvents(payload.events);
-    eventsData = extracted.normalEvents;
-    persistEventsLocal();
-  }
-  if (Array.isArray(payload.announcements)) { announcementsData = payload.announcements; persistAnnouncementsLocal(); }
-  if (Array.isArray(payload.achievements)) { achievementsData = payload.achievements; persistAchievementsLocal(); }
+  if (Array.isArray(payload.events)) { eventsData = payload.events; persistEventsLocal(); }
   if (Array.isArray(payload.gallery)) { galleryData = payload.gallery; persistGalleryLocal(); }
   if (Array.isArray(payload.adminAccounts) && typeof window.applyAdminAccountsSnapshot === 'function') {
     window.applyAdminAccountsSnapshot(payload.adminAccounts, false);
@@ -433,10 +283,8 @@ window.applyCloudContentSnapshot = function (payload = {}, forceRender = true) {
     renderCommittee();
     renderAlumni();
     renderEvents();
-    renderAchievements();
     renderGallery();
     renderOnboarding();
-    renderEmergency();
   }
 };
 
@@ -463,28 +311,11 @@ async function refreshDirectoryMediaFromCloud(forceRender = true) {
         persistAlumniLocal();
       }
     }
-    let sharedContentChanged = false;
     if (typeof window.loadEventsFromCloud === 'function') {
       const cloudEvents = await window.loadEventsFromCloud();
       if (Array.isArray(cloudEvents) && (cloudEvents.length || !eventsData.length)) {
-        const extracted = extractSharedContentFromEvents(cloudEvents);
-        eventsData = extracted.normalEvents;
-        sharedContentChanged = !!extracted.changed;
+        eventsData = cloudEvents;
         persistEventsLocal();
-      }
-    }
-    if (typeof window.loadAnnouncementsFromCloud === 'function') {
-      const cloudAnnouncements = await window.loadAnnouncementsFromCloud();
-      if (Array.isArray(cloudAnnouncements) && (cloudAnnouncements.length || !announcementsData.length)) {
-        announcementsData = cloudAnnouncements;
-        persistAnnouncementsLocal();
-      }
-    }
-    if (typeof window.loadAchievementsFromCloud === 'function') {
-      const cloudAchievements = await window.loadAchievementsFromCloud();
-      if (Array.isArray(cloudAchievements) && (cloudAchievements.length || !achievementsData.length)) {
-        achievementsData = cloudAchievements;
-        persistAchievementsLocal();
       }
     }
     if (typeof window.loadGalleryFromCloud === 'function') {
@@ -494,13 +325,12 @@ async function refreshDirectoryMediaFromCloud(forceRender = true) {
         persistGalleryLocal();
       }
     }
-    if (forceRender || sharedContentChanged) {
+    if (forceRender) {
       renderHome();
       renderMembers();
       renderCommittee();
       renderAlumni();
       renderEvents();
-      renderAchievements();
       renderGallery();
       renderOnboarding();
     }
@@ -514,30 +344,6 @@ const defaultPublicVisibility = { email: true, phone: true, birthday: true, inta
 let publicVisibility = store.get('utp_public_visibility', defaultPublicVisibility);
 const defaultCommunityLinks = { whatsapp: '', facebook: '', instagram: '' };
 let communityLinksData = store.get('utp_community_links', defaultCommunityLinks);
-const defaultEmergencyContacts = [
-  { title: 'UTP Security', phone: '+60 5-368 8999', description: '24/7 campus emergency' },
-  { title: 'Perak Police', phone: '999', description: 'Malaysia emergency' },
-  { title: 'Ambulance', phone: '999', description: 'Medical emergency' },
-  { title: 'Bangladesh High Commission KL', phone: '+60 3-4251 3555', description: 'Passport & welfare' },
-  { title: 'UTP International Office', phone: '+60 5-368 7243', description: 'Visa & student pass' },
-  { title: 'Committee Welfare', phone: '+60 14-333 4444', description: 'Community support' }
-];
-const defaultEmergencyQuickLinks = [
-  { label: 'UTP Website', url: 'https://www.utp.edu.my' },
-  { label: 'ISA Portal', url: '#' },
-  { label: 'E-Learning', url: '#' }
-];
-let emergencyContactsData = store.get('utp_emergency_contacts', defaultEmergencyContacts);
-let emergencyQuickLinksData = store.get('utp_emergency_quick_links', defaultEmergencyQuickLinks);
-window.getEmergencyContacts = () => (Array.isArray(emergencyContactsData) ? emergencyContactsData.map(item => ({ ...item })) : []);
-window.getEmergencyQuickLinks = () => (Array.isArray(emergencyQuickLinksData) ? emergencyQuickLinksData.map(item => ({ ...item })) : []);
-(() => {
-  const extracted = extractSharedContentFromEvents(eventsData);
-  if (Array.isArray(extracted.normalEvents)) {
-    eventsData = extracted.normalEvents;
-    persistEventsLocal();
-  }
-})();
 const defaultOnboardSteps = [
   'Create UTP email & access',
   'Join WhatsApp & Telegram groups',
@@ -626,29 +432,17 @@ function socialLinksOf(m) {
 }
 function currentAdminName() { return (typeof adminSession !== 'undefined' && adminSession && adminSession.name) ? adminSession.name : 'Committee Admin'; }
 function isValidUtpEmail(email) { return /^[A-Za-z0-9._%+-]+@utp\.edu\.my$/i.test((email || '').trim()); }
-function looksLikeLocalFilePath(value='') {
-  const s = String(value || '').trim();
-  return /^[A-Za-z]:[\\/]/.test(s) || s.startsWith('/') || s.includes('fakepath');
-}
+function looksLikeLocalFilePath(value='') { return /^[A-Za-z]:\\|^\\/.test(String(value).trim()) || String(value).includes('fakepath'); }
 function isVideoUrl(url='') {
   const v = String(url || '').trim().toLowerCase();
   return v.startsWith('data:video/') || /\.(mp4|webm|ogg|mov|m4v)(\?|#|$)/.test(v);
 }
-function isDocumentUrl(url='') {
-  const v = String(url || '').trim().toLowerCase();
-  return v.startsWith('data:application/pdf') || /\.(pdf|doc|docx)(\?|#|$)/.test(v);
-}
-function detectMediaType(url='') { return isVideoUrl(url) ? 'video' : (isDocumentUrl(url) ? 'document' : 'image'); }
+function detectMediaType(url='') { return isVideoUrl(url) ? 'video' : 'image'; }
 function mediaPreviewHtml(url='', title='', opts={}) {
   const safeUrl = escapeHtml(url || '');
   const safeTitle = escapeHtml(title || '');
-  const kind = detectMediaType(url);
-  if (kind === 'video') {
+  if (detectMediaType(url) === 'video') {
     return `<video src="${safeUrl}" ${opts.controls ? 'controls' : 'muted playsinline preload="metadata"'}></video>`;
-  }
-  if (kind === 'document') {
-    const ext = (String(url || '').split('.').pop() || 'FILE').split(/[?#]/)[0].toUpperCase();
-    return `<div class="file-icon">${escapeHtml(ext.slice(0, 4))}</div>`;
   }
   return `<img src="${safeUrl}" alt="${safeTitle}">`;
 }
@@ -677,10 +471,8 @@ function setUploadPreview(previewId, value='', label='') {
     box.innerHTML = '';
     return;
   }
-  const kind = detectMediaType(value);
-  const status = kind === 'video' ? 'Video ready' : kind === 'document' ? 'Document ready' : 'Image ready';
   box.classList.add('active');
-  box.innerHTML = `${mediaPreviewHtml(value, label, { controls: kind === 'video' })}<div class="meta"><strong>${escapeHtml(label || 'Selected file')}</strong><span>${status}</span></div>`;
+  box.innerHTML = `${mediaPreviewHtml(value, label, { controls: detectMediaType(value) === 'video' })}<div class="meta"><strong>${escapeHtml(label || 'Selected file')}</strong><span>${detectMediaType(value) === 'video' ? 'Video ready' : 'Image ready'}</span></div>`;
 }
 function syncUploadPreviewFromInput(inputId, previewId, label='Current file') {
   const input = document.getElementById(inputId);
@@ -689,12 +481,11 @@ function syncUploadPreviewFromInput(inputId, previewId, label='Current file') {
   setUploadPreview(previewId, value, label || 'Current file');
 }
 async function assignUploadedFileToInput(file, options = {}) {
-  const { inputId, previewId, folder = 'general', kind = 'image', nameInputId = '' } = options;
+  const { inputId, previewId, folder = 'general', kind = 'image' } = options;
   const input = document.getElementById(inputId);
   if (!input || !file) return;
   const isImage = file.type.startsWith('image/');
   const isVideo = file.type.startsWith('video/');
-  const isDocument = /\.(pdf|doc|docx)$/i.test(file.name) || /(pdf|word|officedocument)/i.test(file.type || '');
   if (kind === 'image' && !isImage) {
     showToast('Please upload an image file here');
     return;
@@ -703,22 +494,18 @@ async function assignUploadedFileToInput(file, options = {}) {
     showToast('Please upload an image or video file');
     return;
   }
-  if (kind === 'document' && !isDocument) {
-    showToast('Please upload a PDF or DOCX file');
-    return;
-  }
   try {
     let finalUrl = '';
     if (typeof window.uploadDashboardMediaFile === 'function') {
       try {
-        finalUrl = await window.uploadDashboardMediaFile(file, { folder, kind: isVideo ? 'video' : isDocument ? 'document' : 'image' });
+        finalUrl = await window.uploadDashboardMediaFile(file, { folder, kind: isVideo ? 'video' : 'image' });
       } catch (err) {
         console.warn('Cloud upload failed:', err);
       }
     }
     if (!finalUrl) {
       if (!isImage) {
-        showToast(kind === 'document' ? 'Document upload needs Supabase Storage. Create the community-media bucket first.' : 'Video upload needs Supabase Storage. Create the community-media bucket first.');
+        showToast('Video upload needs Supabase Storage. Create the community-media bucket first.');
         return;
       }
       if (file.size > 2 * 1024 * 1024) {
@@ -728,12 +515,8 @@ async function assignUploadedFileToInput(file, options = {}) {
       finalUrl = await fileToDataUrl(file);
     }
     input.value = finalUrl;
-    if (nameInputId) {
-      const nameInput = document.getElementById(nameInputId);
-      if (nameInput) nameInput.value = file.name;
-    }
     setUploadPreview(previewId, finalUrl, `${file.name} • ${formatBytes(file.size)}`);
-    showToast(kind === 'document' ? 'Attachment uploaded successfully' : isVideo ? 'Video attached successfully' : 'Image attached successfully');
+    showToast(isVideo ? 'Video attached successfully' : 'Image attached successfully');
   } catch (err) {
     console.error(err);
     showToast(String(err.message || err));
@@ -748,7 +531,6 @@ function initUploadWidgets() {
     const fileInputId = panel.dataset.fileInput;
     const folder = panel.dataset.folder || 'general';
     const kind = panel.dataset.uploadKind || 'image';
-    const nameInputId = panel.dataset.nameTarget || '';
     const fileInput = document.getElementById(fileInputId);
     const dropzone = panel.querySelector('[data-role="dropzone"]');
     if (!fileInput || !dropzone) return;
@@ -759,7 +541,7 @@ function initUploadWidgets() {
     fileInput.addEventListener('change', async e => {
       const file = e.target.files && e.target.files[0];
       if (!file) return;
-      await assignUploadedFileToInput(file, { inputId, previewId, folder, kind, nameInputId });
+      await assignUploadedFileToInput(file, { inputId, previewId, folder, kind });
       e.target.value = '';
     });
     ['dragenter','dragover'].forEach(evt => dropzone.addEventListener(evt, e => {
@@ -773,7 +555,7 @@ function initUploadWidgets() {
     dropzone.addEventListener('drop', async e => {
       const file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
       if (!file) return;
-      await assignUploadedFileToInput(file, { inputId, previewId, folder, kind, nameInputId });
+      await assignUploadedFileToInput(file, { inputId, previewId, folder, kind });
     });
     const input = document.getElementById(inputId);
     if (input) input.addEventListener('input', () => {
@@ -988,7 +770,6 @@ function renderHome() {
       <div>
         <div><strong>${a.title}</strong> <span class="chip gold">${a.type}</span></div>
         <div class="muted">${a.member} • ${fmtDate(a.date)} • ${a.department || ''}</div>
-        ${a.attachment ? `<div class="inline-metrics" style="margin-top:6px"><a class="chip" href="${a.attachment}" target="_blank" rel="noopener">📎 ${escapeHtml(a.attachmentName || 'Attachment')}</a></div>` : ''}
       </div>
     </div>`).join('') : `<div class="empty-state">No achievements added yet.</div>`;
 
@@ -1223,72 +1004,21 @@ function renderAlumni() {
 function renderEvents() {
   const page = document.getElementById('page-events');
   const upcomingCount = eventsData.filter(e => new Date(e.date) >= new Date()).length;
-  const currentLinks = normalizeCommunityLinks(communityLinksData);
   page.innerHTML = `
-    <div class="page-banner"><h2>Events & Announcements</h2><p>Community programs, important updates, shared links, and committee updates in one view.</p></div>
+    <div class="page-banner"><h2>Events & Announcements</h2><p>Community programs, important updates, and RSVP tracking in one view.</p></div>
     <div class="info-strip" style="margin-top:0;margin-bottom:12px">
       <div class="card"><div class="section-kicker">Upcoming</div><div class="stat"><div class="icon">📅</div><div><div class="v">${upcomingCount}</div><div class="l">Scheduled events</div></div></div></div>
       <div class="card"><div class="section-kicker">Announcements</div><div class="stat"><div class="icon">📢</div><div><div class="v">${announcementsData.length}</div><div class="l">Posted updates</div></div></div></div>
       <div class="card"><div class="section-kicker">Pinned</div><div class="stat"><div class="icon">📌</div><div><div class="v">${announcementsData.filter(a => a.pinned).length}</div><div class="l">Pinned items</div></div></div></div>
       <div class="card"><div class="section-kicker">Interest</div><div class="stat"><div class="icon">🙋</div><div><div class="v">${eventsData.reduce((t, e) => t + num(e.rsvp), 0)}</div><div class="l">RSVP total</div></div></div></div>
     </div>
-
-    <div class="grid grid-2" style="margin-bottom:12px">
-      <div class="card cover-card">
-        <div class="section-title"><h2>📢 Community message</h2><span class="chip">Home synced</span></div>
-        <div class="muted" style="margin-bottom:10px">Anything saved here will also appear on the Home page.</div>
-        <div class="committee-msg-box" style="margin:0 0 12px 0;display:${committeeMessage && committeeMessage.active && committeeMessage.text ? 'block' : 'none'}">
-          <div class="msg-label">📢 Message from the Committee</div>
-          <div class="msg-body">${escapeHtml(committeeMessage?.text || '') || '<span class="muted">No active message yet.</span>'}</div>
-          ${committeeMessage?.author ? `<div class="msg-author">&mdash; ${escapeHtml(committeeMessage.author)}</div>` : ''}
-        </div>
-        ${adminMode() ? `
-          <form id="eventsCommunityMessageForm" class="admin-inline-form">
-            <label>Message</label>
-            <textarea id="eventsCommunityMessageText" rows="6" placeholder="Write the committee message for the whole community...">${escapeHtml(committeeMessage?.text || '')}</textarea>
-            <div class="grid grid-2" style="margin-top:10px">
-              <div>
-                <label>Author</label>
-                <input id="eventsCommunityMessageAuthor" value="${escapeHtml(committeeMessage?.author || '')}" placeholder="e.g. General Secretary, AIS-BD, UTP">
-              </div>
-              <div style="display:flex;align-items:flex-end">
-                <label style="display:flex;align-items:center;gap:8px;margin:0"><input id="eventsCommunityMessageActive" type="checkbox" ${committeeMessage?.active ? 'checked' : ''}> Show on Home</label>
-              </div>
-            </div>
-            <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px">
-              <button class="primary" type="submit">Save community message</button>
-              <button class="ghost" type="button" id="eventsCommunityMessageClear">Clear</button>
-            </div>
-          </form>` : (!committeeMessage?.active || !committeeMessage?.text ? '<div class="empty-state">No active community message right now.</div>' : '')}
-      </div>
-
-      <div class="card cover-card">
-        <div class="section-title"><h2>🔗 Quick links</h2><span class="chip">Home synced</span></div>
-        <div class="muted" style="margin-bottom:10px">Shared links saved here will also appear on the Home page.</div>
-        <div class="inline-metrics" style="margin-bottom:12px">${communityLinksHtml()}</div>
-        ${adminMode() ? `
-          <form id="eventsQuickLinksForm" class="admin-inline-form">
-            <label>WhatsApp</label>
-            <input id="eventsQuickLinkWhatsapp" value="${escapeHtml(currentLinks.whatsapp)}" placeholder="https://chat.whatsapp.com/...">
-            <label style="margin-top:10px">Facebook</label>
-            <input id="eventsQuickLinkFacebook" value="${escapeHtml(currentLinks.facebook)}" placeholder="https://facebook.com/...">
-            <label style="margin-top:10px">Instagram</label>
-            <input id="eventsQuickLinkInstagram" value="${escapeHtml(currentLinks.instagram)}" placeholder="https://instagram.com/...">
-            <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px">
-              <button class="primary" type="submit">Save quick links</button>
-              <button class="ghost" type="button" id="eventsQuickLinksClear">Clear all</button>
-            </div>
-          </form>` : ''}
-      </div>
-    </div>
-
     <div class="grid grid-2">
       <div class="card cover-card">
-        <div class="section-title"><h2>Events</h2>${adminMode() ? '<button class="primary" onclick="openModal(&#39;modalEvent&#39;)">+ Add Event</button>' : ''}</div>
+        <div class="section-title"><h2>Events</h2>${adminMode() ? '<button class="primary" onclick="openModal(\'modalEvent\')">+ Add Event</button>' : ''}</div>
         <div class="list" id="eventsList"></div>
       </div>
       <div class="card cover-card">
-        <div class="section-title"><h2>Announcements</h2>${adminMode() ? '<button class="primary" onclick="openModal(&#39;modalAnnounce&#39;)">+ Add</button>' : ''}</div>
+        <div class="section-title"><h2>Announcements</h2>${adminMode() ? '<button class="primary" onclick="openModal(\'modalAnnounce\')">+ Add</button>' : ''}</div>
         <div class="list" id="annList"></div>
       </div>
     </div>`;
@@ -1323,35 +1053,7 @@ function renderEvents() {
       <div class="admin-actions"><button class="btn-edit" data-action="edit-announcement" data-id="${a.id}" type="button">✏️ Edit</button><button class="btn-delete" data-action="delete-announcement" data-id="${a.id}" type="button">🗑️ Delete</button></div>
     </div>`).join('') || `<div class="empty-state">No announcements available.</div>`;
 
-  if (adminMode()) {
-    page.querySelector('#eventsCommunityMessageForm')?.addEventListener('submit', async (event) => {
-      event.preventDefault();
-      const text = document.getElementById('eventsCommunityMessageText')?.value || '';
-      const author = document.getElementById('eventsCommunityMessageAuthor')?.value || '';
-      const active = !!document.getElementById('eventsCommunityMessageActive')?.checked;
-      window.setCommitteeMessage(text, author, active);
-      showToast('Community message saved');
-    });
-    page.querySelector('#eventsCommunityMessageClear')?.addEventListener('click', () => {
-      window.setCommitteeMessage('', '', false);
-      showToast('Community message cleared');
-    });
-    page.querySelector('#eventsQuickLinksForm')?.addEventListener('submit', async (event) => {
-      event.preventDefault();
-      window.setCommunityLinks({
-        whatsapp: document.getElementById('eventsQuickLinkWhatsapp')?.value || '',
-        facebook: document.getElementById('eventsQuickLinkFacebook')?.value || '',
-        instagram: document.getElementById('eventsQuickLinkInstagram')?.value || ''
-      });
-      showToast('Quick links saved');
-    });
-    page.querySelector('#eventsQuickLinksClear')?.addEventListener('click', () => {
-      window.setCommunityLinks({ whatsapp: '', facebook: '', instagram: '' });
-      showToast('Quick links cleared');
-    });
-  }
-
-  page.onclick = (event) => {
+  page.addEventListener('click', (event) => {
     const button = event.target.closest('button[data-action]');
     if (!button) return;
     const id = Number(button.dataset.id);
@@ -1359,7 +1061,7 @@ function renderEvents() {
     if (button.dataset.action === 'delete-event') confirmDeleteEvent(id);
     if (button.dataset.action === 'edit-announcement') openEditAnnouncement(id);
     if (button.dataset.action === 'delete-announcement') confirmDeleteAnnouncement(id);
-  };
+  });
 }
 
 document.getElementById('formEvent').addEventListener('submit', async e => {
@@ -1388,21 +1090,13 @@ document.getElementById('formEvent').addEventListener('submit', async e => {
   f.reset();
 });
 
-document.getElementById('formAnnounce').addEventListener('submit', async e => {
+document.getElementById('formAnnounce').addEventListener('submit', e => {
   e.preventDefault();
   if (!adminMode()) return;
   const f = e.target;
   const obj = { id: Date.now(), title: f.title.value.trim(), date: f.date.value, category: f.category.value, pinned: f.pinned.checked, content: f.content.value };
   announcementsData.unshift(obj);
-  persistAnnouncementsLocal();
-  if (typeof window.saveAnnouncementToCloud === 'function') {
-    try {
-      const saved = await window.saveAnnouncementToCloud(obj);
-      const idx = announcementsData.findIndex(x => Number(x.id) === Number(obj.id));
-      if (saved && idx >= 0) announcementsData[idx] = saved;
-      persistAnnouncementsLocal();
-    } catch (err) { console.warn('Cloud announcement save failed:', err); }
-  }
+  store.set('utp_announcements', announcementsData);
   closeModal('modalAnnounce');
   renderEvents();
   renderHome();
@@ -1434,7 +1128,6 @@ function renderAchievements() {
             <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><strong>${a.title}</strong><span class="chip gold">${a.type}</span></div>
             <div class="muted">${a.member} • ${fmtDate(a.date)}</div>
             <div class="muted">${a.department || ''}${a.details ? ' • ' + a.details : ''}</div>
-            ${a.attachment ? `<div class="inline-metrics" style="margin-top:8px"><a class="chip" href="${a.attachment}" target="_blank" rel="noopener">📎 ${escapeHtml(a.attachmentName || 'Attachment')}</a></div>` : ''}
             <div class="admin-actions"><button class="btn-edit" data-action="edit-achievement" data-id="${a.id}" type="button">✏️ Edit</button><button class="btn-delete" data-action="delete-achievement" data-id="${a.id}" type="button">🗑️ Delete</button></div>
           </div>
         </div>
@@ -1453,51 +1146,20 @@ function renderAchievements() {
 function openAchModal() {
   const sel = document.getElementById('achMemberSelect');
   sel.innerHTML = membersData.map(m => `<option>${m.name}</option>`).join('');
-  const form = document.getElementById('formAchieve');
-  if (form) form.reset();
-  setUploadPreview('achievementPhotoPreview', '', '');
-  setUploadPreview('achievementAttachmentPreview', '', '');
   openModal('modalAchieve');
 }
 
-document.getElementById('formAchieve').addEventListener('submit', async e => {
+document.getElementById('formAchieve').addEventListener('submit', e => {
   e.preventDefault();
   if (!adminMode()) return;
   const f = e.target;
-  const photoValue = String(f.photo.value || '').trim();
-  const attachmentValue = String(f.attachment.value || '').trim();
-  if (looksLikeLocalFilePath(photoValue) || looksLikeLocalFilePath(attachmentValue)) {
-    showToast('Use the upload boxes for local files. PC file paths will not work.');
-    return;
-  }
-  const obj = {
-    id: Date.now(),
-    member: f.member.value,
-    title: f.title.value.trim(),
-    type: f.type.value,
-    date: f.date.value,
-    department: f.department.value.trim(),
-    details: f.details.value.trim(),
-    photo: photoValue,
-    attachment: attachmentValue,
-    attachmentName: String(f.attachmentName.value || '').trim() || (attachmentValue ? attachmentValue.split('/').pop().split('?')[0] : '')
-  };
+  const obj = { id: Date.now(), member: f.member.value, title: f.title.value, type: f.type.value, date: f.date.value, department: f.department.value, details: f.details.value, photo: f.photo.value };
   achievementsData.unshift(obj);
-  persistAchievementsLocal();
-  if (typeof window.saveAchievementToCloud === 'function') {
-    try {
-      const saved = await window.saveAchievementToCloud(obj);
-      const idx = achievementsData.findIndex(x => Number(x.id) === Number(obj.id));
-      if (saved && idx >= 0) achievementsData[idx] = saved;
-      persistAchievementsLocal();
-    } catch (err) { console.warn('Cloud achievement save failed:', err); }
-  }
+  store.set('utp_achievements', achievementsData);
   closeModal('modalAchieve');
   renderAchievements();
   renderHome();
   f.reset();
-  setUploadPreview('achievementPhotoPreview', '', '');
-  setUploadPreview('achievementAttachmentPreview', '', '');
 });
 
 /* --------- GALLERY --------- */
@@ -1932,31 +1594,31 @@ function renderOnboarding() {
 
 /* --------- EMERGENCY --------- */
 function renderEmergency() {
+  const welfare = committeeData.find(c => normalize(c.role).includes('welfare'));
   const page = document.getElementById('page-emergency');
-  const contacts = (Array.isArray(emergencyContactsData) && emergencyContactsData.length ? emergencyContactsData : defaultEmergencyContacts).map((item, index) => ({
-    title: String((item && item.title) || (defaultEmergencyContacts[index] && defaultEmergencyContacts[index].title) || '').trim(),
-    phone: String((item && item.phone) || '').trim(),
-    description: String((item && item.description) || '').trim()
-  }));
-  const links = (Array.isArray(emergencyQuickLinksData) && emergencyQuickLinksData.length ? emergencyQuickLinksData : defaultEmergencyQuickLinks).map((item, index) => ({
-    label: String((item && item.label) || (defaultEmergencyQuickLinks[index] && defaultEmergencyQuickLinks[index].label) || '').trim(),
-    url: String((item && item.url) || '').trim()
-  }));
   page.innerHTML = `
     <div class="page-banner"><h2>Emergency & Support Resources</h2><p>Fast access to important campus, embassy, and welfare contacts.</p></div>
-    ${adminMode() ? `<div class="card cover-card" style="margin-bottom:14px"><div class="section-title"><h2>Admin controls</h2><div class="admin-actions" style="display:flex"><button class="ghost" type="button" onclick="openEmergencyContactsEditor()">✏️ Edit contacts</button><button class="ghost" type="button" onclick="openEmergencyLinksEditor()">🔗 Edit quick links</button></div></div><div class="muted">Changes here sync to other browsers through Supabase.</div></div>` : ''}
     <div class="grid grid-3">
-      ${contacts.map(c => `
+      ${[
+        { t: 'UTP Security', p: '+60 5-368 8999', d: '24/7 campus emergency' },
+        { t: 'Perak Police', p: '999', d: 'Malaysia emergency' },
+        { t: 'Ambulance', p: '999', d: 'Medical emergency' },
+        { t: 'Bangladesh High Commission KL', p: '+60 3-4251 3555', d: 'Passport & welfare' },
+        { t: 'UTP International Office', p: '+60 5-368 7243', d: 'Visa & student pass' },
+        { t: 'Committee Welfare', p: welfare?.phone || '+60 14-333 4444', d: 'Community support' }
+      ].map(c => `
         <div class="card cover-card">
-          <div style="display:flex;justify-content:space-between;align-items:center"><strong>${escapeHtml(c.title)}</strong>${c.phone ? `<a class="chip red" href="tel:${escapeHtml(c.phone.replace(/\s/g, ''))}">Call</a>` : ''}</div>
-          <div style="font-size:22px;font-weight:800;margin:10px 0">${escapeHtml(c.phone || '—')}</div>
-          <div class="muted">${escapeHtml(c.description || '')}</div>
+          <div style="display:flex;justify-content:space-between;align-items:center"><strong>${c.t}</strong><a class="chip red" href="tel:${c.p.replace(/\s/g, '')}">Call</a></div>
+          <div style="font-size:22px;font-weight:800;margin:10px 0">${c.p}</div>
+          <div class="muted">${c.d}</div>
         </div>`).join('')}
     </div>
     <div class="card cover-card" style="margin-top:14px">
       <div class="section-title"><h2>Quick Links</h2></div>
       <div class="grid grid-3">
-        ${links.map(link => `<a class="card" style="text-align:center" href="${escapeHtml(link.url || '#')}" ${link.url && link.url !== '#' ? 'target="_blank" rel="noopener"' : ''}>${escapeHtml(link.label || 'Link')}</a>`).join('')}
+        <a class="card" style="text-align:center" href="https://www.utp.edu.my" target="_blank">UTP Website</a>
+        <a class="card" style="text-align:center" href="#">ISA Portal</a>
+        <a class="card" style="text-align:center" href="#">E-Learning</a>
       </div>
     </div>`;
 }
@@ -1978,6 +1640,5 @@ renderOnboarding();
 renderEmergency();
 showPage('home');
 refreshDirectoryMediaFromCloud(false);
-if (typeof refreshSiteSettingsFromCloud === 'function') refreshSiteSettingsFromCloud();
 
 document.getElementById('footerYear') && (document.getElementById('footerYear').textContent = new Date().getFullYear());
