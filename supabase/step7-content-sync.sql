@@ -22,19 +22,7 @@ create table if not exists public.events_board (
   updated_at timestamptz not null default now()
 );
 
-create table if not exists public.announcements_board (
-  id bigint primary key,
-  payload jsonb not null,
-  updated_at timestamptz not null default now()
-);
-
 create table if not exists public.gallery_items (
-  id bigint primary key,
-  payload jsonb not null,
-  updated_at timestamptz not null default now()
-);
-
-create table if not exists public.achievements_board (
   id bigint primary key,
   payload jsonb not null,
   updated_at timestamptz not null default now()
@@ -44,8 +32,6 @@ alter table public.members_directory enable row level security;
 alter table public.committee_directory enable row level security;
 alter table public.alumni_directory enable row level security;
 alter table public.events_board enable row level security;
-alter table public.announcements_board enable row level security;
-alter table public.achievements_board enable row level security;
 alter table public.gallery_items enable row level security;
 
 drop policy if exists "members_public_read" on public.members_directory;
@@ -76,23 +62,9 @@ create policy "events_public_read"
   to anon, authenticated
   using (true);
 
-drop policy if exists "announcements_public_read" on public.announcements_board;
-create policy "announcements_public_read"
-  on public.announcements_board
-  for select
-  to anon, authenticated
-  using (true);
-
 drop policy if exists "gallery_public_read" on public.gallery_items;
 create policy "gallery_public_read"
   on public.gallery_items
-  for select
-  to anon, authenticated
-  using (true);
-
-drop policy if exists "achievements_public_read" on public.achievements_board;
-create policy "achievements_public_read"
-  on public.achievements_board
   for select
   to anon, authenticated
   using (true);
@@ -111,14 +83,6 @@ exception when duplicate_object then null; end $$;
 
 do $$ begin
   alter publication supabase_realtime add table public.events_board;
-exception when duplicate_object then null; end $$;
-
-do $$ begin
-  alter publication supabase_realtime add table public.announcements_board;
-exception when duplicate_object then null; end $$;
-
-do $$ begin
-  alter publication supabase_realtime add table public.achievements_board;
 exception when duplicate_object then null; end $$;
 
 do $$ begin
