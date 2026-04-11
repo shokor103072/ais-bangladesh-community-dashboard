@@ -4,8 +4,6 @@ const TABLES = {
   committee: 'committee_directory',
   alumni: 'alumni_directory',
   events: 'events_board',
-  announcements: 'announcements_board',
-  achievements: 'achievements_board',
   gallery: 'gallery_items',
   admins: 'admin_accounts',
   settings: 'site_settings'
