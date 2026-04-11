@@ -885,43 +885,71 @@ function openEditAchievement(id) {
   document.getElementById('editAchievementDepartment').value = a.department || '';
   document.getElementById('editAchievementDetails').value = a.details || '';
   document.getElementById('editAchievementPhoto').value = (a.photo && !String(a.photo).startsWith('data:')) ? a.photo : '';
+  document.getElementById('editAchievementAttachment').value = a.attachment || '';
+  document.getElementById('editAchievementAttachmentName').value = a.attachmentName || '';
+  if (typeof window.syncUploadPreviewFromInput === 'function') {
+    window.syncUploadPreviewFromInput('editAchievementPhoto', 'editAchievementPhotoPreview', a.title || 'Achievement photo');
+    window.syncUploadPreviewFromInput('editAchievementAttachment', 'editAchievementAttachmentPreview', a.attachmentName || 'Achievement attachment');
+  }
   openModal('modalEditAchievement');
 }
 
-document.getElementById('formEditAchievement').addEventListener('submit', e => {
+document.getElementById('formEditAchievement').addEventListener('submit', async e => {
   e.preventDefault();
   if (!isAdmin || !editingAchievementId) return;
   const idx = achievementsData.findIndex(x => x.id === editingAchievementId);
   if (idx === -1) return;
   const f = e.target;
+  const photoValue = String(f.photo.value || '').trim();
+  const attachmentValue = String(f.attachment.value || '').trim();
+  if (looksLikeLocalFilePath(photoValue) || looksLikeLocalFilePath(attachmentValue)) {
+    showToast('Use the upload boxes for local files. PC file paths will not work.');
+    return;
+  }
   Object.assign(achievementsData[idx], {
     member: f.member.value.trim(),
     type: f.type.value,
     date: f.date.value,
     title: f.title.value.trim(),
     department: f.department.value.trim(),
-    details: f.details.value.trim()
+    details: f.details.value.trim(),
+    photo: photoValue,
+    attachment: attachmentValue,
+    attachmentName: String(f.attachmentName.value || '').trim() || (attachmentValue ? attachmentValue.split('/').pop().split('?')[0] : '')
   });
-  if (f.photo.value.trim()) achievementsData[idx].photo = f.photo.value.trim();
   store.set('utp_achievements', achievementsData);
+  if (typeof window.saveAchievementToCloud === 'function') {
+    try {
+      const saved = await window.saveAchievementToCloud(achievementsData[idx]);
+      if (saved) achievementsData[idx] = saved;
+      store.set('utp_achievements', achievementsData);
+    } catch (err) { console.warn('Cloud achievement update failed:', err); }
+  }
   closeModal('modalEditAchievement');
   showToast('Achievement updated');
   reRenderAll();
 });
-function deleteAchievementEdit() {
+async function deleteAchievementEdit() {
   if (!isAdmin || !editingAchievementId) return;
   if (!confirm('Delete this achievement?')) return;
+  const deleteId = editingAchievementId;
   achievementsData = achievementsData.filter(x => x.id !== editingAchievementId);
   store.set('utp_achievements', achievementsData);
+  if (typeof window.deleteAchievementFromCloud === 'function') {
+    try { await window.deleteAchievementFromCloud(deleteId); } catch (err) { console.warn('Cloud achievement delete failed:', err); }
+  }
   closeModal('modalEditAchievement');
   showToast('Achievement deleted');
   reRenderAll();
 }
-function confirmDeleteAchievement(id) {
+async function confirmDeleteAchievement(id) {
   if (!isAdmin) return;
   if (!confirm('Delete this achievement?')) return;
   achievementsData = achievementsData.filter(x => x.id !== id);
   store.set('utp_achievements', achievementsData);
+  if (typeof window.deleteAchievementFromCloud === 'function') {
+    try { await window.deleteAchievementFromCloud(id); } catch (err) { console.warn('Cloud achievement delete failed:', err); }
+  }
   showToast('Achievement deleted');
   reRenderAll();
 }

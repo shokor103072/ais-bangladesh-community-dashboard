@@ -379,7 +379,27 @@
       <label>Title</label><input required name="title" placeholder="e.g., PhD Viva Passed">
       <label>Department</label><input name="department" placeholder="e.g., Chemical Engineering">
       <label>Details</label><textarea name="details" rows="2"></textarea>
-      <label>Photo URL (optional)</label><input name="photo">
+      <label>Photo URL (optional)</label><input name="photo" id="achievementPhotoInput" placeholder="https://...">
+      <div class="upload-note">You can paste an image URL or upload a photo from your computer.</div>
+      <div class="upload-panel" data-upload-target="achievementPhotoInput" data-preview-target="achievementPhotoPreview" data-file-input="achievementPhotoFile" data-folder="achievements/photos" data-accept="image/*" data-upload-kind="image">
+        <div class="upload-dropzone" data-role="dropzone" tabindex="0">
+          <div><strong>Drag and drop achievement photo here</strong></div>
+          <div class="muted">or click to browse from your computer</div>
+        </div>
+        <input type="file" id="achievementPhotoFile" accept="image/*" hidden>
+        <div class="upload-preview" id="achievementPhotoPreview"></div>
+      </div>
+      <label style="margin-top:10px">Attachment URL (PDF/DOCX optional)</label><input name="attachment" id="achievementAttachmentInput" placeholder="https://.../proof.pdf">
+      <input type="hidden" name="attachmentName" id="achievementAttachmentName">
+      <div class="upload-note">Upload PDF, DOC, or DOCX proof for this achievement.</div>
+      <div class="upload-panel" data-upload-target="achievementAttachmentInput" data-preview-target="achievementAttachmentPreview" data-file-input="achievementAttachmentFile" data-folder="achievements/attachments" data-accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" data-upload-kind="document" data-name-target="achievementAttachmentName">
+        <div class="upload-dropzone" data-role="dropzone" tabindex="0">
+          <div><strong>Drag and drop PDF or DOCX here</strong></div>
+          <div class="muted">or click to browse from your computer</div>
+        </div>
+        <input type="file" id="achievementAttachmentFile" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" hidden>
+        <div class="upload-preview" id="achievementAttachmentPreview"></div>
+      </div>
       <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
         <button type="button" class="ghost" onclick="closeModal('modalAchieve')">Cancel</button>
         <button class="primary" type="submit">Save</button>
@@ -556,7 +576,27 @@
       <label>Title</label><input name="title" id="editAchievementTitle">
       <label>Department</label><input name="department" id="editAchievementDepartment">
       <label>Details</label><textarea rows="3" name="details" id="editAchievementDetails"></textarea>
-      <label>Photo URL</label><input name="photo" id="editAchievementPhoto">
+      <label>Photo URL</label><input name="photo" id="editAchievementPhoto" placeholder="https://...">
+      <div class="upload-note">You can paste an image URL or upload a photo from your computer.</div>
+      <div class="upload-panel" data-upload-target="editAchievementPhoto" data-preview-target="editAchievementPhotoPreview" data-file-input="editAchievementPhotoFile" data-folder="achievements/photos" data-accept="image/*" data-upload-kind="image">
+        <div class="upload-dropzone" data-role="dropzone" tabindex="0">
+          <div><strong>Drag and drop achievement photo here</strong></div>
+          <div class="muted">or click to browse from your computer</div>
+        </div>
+        <input type="file" id="editAchievementPhotoFile" accept="image/*" hidden>
+        <div class="upload-preview" id="editAchievementPhotoPreview"></div>
+      </div>
+      <label style="margin-top:10px">Attachment URL</label><input name="attachment" id="editAchievementAttachment" placeholder="https://.../proof.pdf">
+      <input type="hidden" name="attachmentName" id="editAchievementAttachmentName">
+      <div class="upload-note">Upload PDF, DOC, or DOCX proof for this achievement.</div>
+      <div class="upload-panel" data-upload-target="editAchievementAttachment" data-preview-target="editAchievementAttachmentPreview" data-file-input="editAchievementAttachmentFile" data-folder="achievements/attachments" data-accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" data-upload-kind="document" data-name-target="editAchievementAttachmentName">
+        <div class="upload-dropzone" data-role="dropzone" tabindex="0">
+          <div><strong>Drag and drop PDF or DOCX here</strong></div>
+          <div class="muted">or click to browse from your computer</div>
+        </div>
+        <input type="file" id="editAchievementAttachmentFile" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" hidden>
+        <div class="upload-preview" id="editAchievementAttachmentPreview"></div>
+      </div>
       <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
         <button type="button" class="ghost" style="color:var(--red)" onclick="deleteAchievementEdit()">Delete</button>
         <button type="button" class="ghost" onclick="closeModal('modalEditAchievement')">Cancel</button>

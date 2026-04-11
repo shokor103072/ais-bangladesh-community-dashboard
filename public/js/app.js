@@ -354,6 +354,7 @@ function persistMembersLocal() { store.set('utp_members', membersData); }
 function persistCommitteeLocal() { store.set('utp_committee', committeeData); }
 function persistAlumniLocal() { store.set('utp_alumni', alumniData); }
 function persistEventsLocal() { store.set('utp_events', eventsData); }
+function persistAchievementsLocal() { store.set('utp_achievements', achievementsData); }
 function persistGalleryLocal() { store.set('utp_gallery', galleryData); }
 
 window.getCloudContentSnapshot = function () {
@@ -366,6 +367,7 @@ window.getCloudContentSnapshot = function () {
       buildSharedContentEventRow('committee_message'),
       buildSharedContentEventRow('community_links')
     ].filter(Boolean),
+    achievements: Array.isArray(achievementsData) ? achievementsData : [],
     gallery: Array.isArray(galleryData) ? galleryData : [],
     adminAccounts: typeof window.getAdminAccountsSnapshot === 'function' ? window.getAdminAccountsSnapshot() : []
   };
@@ -380,6 +382,7 @@ window.applyCloudContentSnapshot = function (payload = {}, forceRender = true) {
     eventsData = extracted.normalEvents;
     persistEventsLocal();
   }
+  if (Array.isArray(payload.achievements)) { achievementsData = payload.achievements; persistAchievementsLocal(); }
   if (Array.isArray(payload.gallery)) { galleryData = payload.gallery; persistGalleryLocal(); }
   if (Array.isArray(payload.adminAccounts) && typeof window.applyAdminAccountsSnapshot === 'function') {
     window.applyAdminAccountsSnapshot(payload.adminAccounts, false);
@@ -390,6 +393,7 @@ window.applyCloudContentSnapshot = function (payload = {}, forceRender = true) {
     renderCommittee();
     renderAlumni();
     renderEvents();
+    renderAchievements();
     renderGallery();
     renderOnboarding();
   }
@@ -428,6 +432,13 @@ async function refreshDirectoryMediaFromCloud(forceRender = true) {
         persistEventsLocal();
       }
     }
+    if (typeof window.loadAchievementsFromCloud === 'function') {
+      const cloudAchievements = await window.loadAchievementsFromCloud();
+      if (Array.isArray(cloudAchievements) && (cloudAchievements.length || !achievementsData.length)) {
+        achievementsData = cloudAchievements;
+        persistAchievementsLocal();
+      }
+    }
     if (typeof window.loadGalleryFromCloud === 'function') {
       const cloudGallery = await window.loadGalleryFromCloud();
       if (Array.isArray(cloudGallery) && (cloudGallery.length || !galleryData.length)) {
@@ -441,6 +452,7 @@ async function refreshDirectoryMediaFromCloud(forceRender = true) {
       renderCommittee();
       renderAlumni();
       renderEvents();
+      renderAchievements();
       renderGallery();
       renderOnboarding();
     }
@@ -549,17 +561,29 @@ function socialLinksOf(m) {
 }
 function currentAdminName() { return (typeof adminSession !== 'undefined' && adminSession && adminSession.name) ? adminSession.name : 'Committee Admin'; }
 function isValidUtpEmail(email) { return /^[A-Za-z0-9._%+-]+@utp\.edu\.my$/i.test((email || '').trim()); }
-function looksLikeLocalFilePath(value='') { return /^[A-Za-z]:\\|^\\/.test(String(value).trim()) || String(value).includes('fakepath'); }
+function looksLikeLocalFilePath(value='') {
+  const s = String(value || '').trim();
+  return /^[A-Za-z]:[\\/]/.test(s) || s.startsWith('/') || s.includes('fakepath');
+}
 function isVideoUrl(url='') {
   const v = String(url || '').trim().toLowerCase();
   return v.startsWith('data:video/') || /\.(mp4|webm|ogg|mov|m4v)(\?|#|$)/.test(v);
 }
-function detectMediaType(url='') { return isVideoUrl(url) ? 'video' : 'image'; }
+function isDocumentUrl(url='') {
+  const v = String(url || '').trim().toLowerCase();
+  return v.startsWith('data:application/pdf') || /\.(pdf|doc|docx)(\?|#|$)/.test(v);
+}
+function detectMediaType(url='') { return isVideoUrl(url) ? 'video' : (isDocumentUrl(url) ? 'document' : 'image'); }
 function mediaPreviewHtml(url='', title='', opts={}) {
   const safeUrl = escapeHtml(url || '');
   const safeTitle = escapeHtml(title || '');
-  if (detectMediaType(url) === 'video') {
+  const kind = detectMediaType(url);
+  if (kind === 'video') {
     return `<video src="${safeUrl}" ${opts.controls ? 'controls' : 'muted playsinline preload="metadata"'}></video>`;
+  }
+  if (kind === 'document') {
+    const ext = (String(url || '').split('.').pop() || 'FILE').split(/[?#]/)[0].toUpperCase();
+    return `<div class="file-icon">${escapeHtml(ext.slice(0, 4))}</div>`;
   }
   return `<img src="${safeUrl}" alt="${safeTitle}">`;
 }
@@ -588,8 +612,10 @@ function setUploadPreview(previewId, value='', label='') {
     box.innerHTML = '';
     return;
   }
+  const kind = detectMediaType(value);
+  const status = kind === 'video' ? 'Video ready' : kind === 'document' ? 'Document ready' : 'Image ready';
   box.classList.add('active');
-  box.innerHTML = `${mediaPreviewHtml(value, label, { controls: detectMediaType(value) === 'video' })}<div class="meta"><strong>${escapeHtml(label || 'Selected file')}</strong><span>${detectMediaType(value) === 'video' ? 'Video ready' : 'Image ready'}</span></div>`;
+  box.innerHTML = `${mediaPreviewHtml(value, label, { controls: kind === 'video' })}<div class="meta"><strong>${escapeHtml(label || 'Selected file')}</strong><span>${status}</span></div>`;
 }
 function syncUploadPreviewFromInput(inputId, previewId, label='Current file') {
   const input = document.getElementById(inputId);
@@ -598,11 +624,12 @@ function syncUploadPreviewFromInput(inputId, previewId, label='Current file') {
   setUploadPreview(previewId, value, label || 'Current file');
 }
 async function assignUploadedFileToInput(file, options = {}) {
-  const { inputId, previewId, folder = 'general', kind = 'image' } = options;
+  const { inputId, previewId, folder = 'general', kind = 'image', nameInputId = '' } = options;
   const input = document.getElementById(inputId);
   if (!input || !file) return;
   const isImage = file.type.startsWith('image/');
   const isVideo = file.type.startsWith('video/');
+  const isDocument = /\.(pdf|doc|docx)$/i.test(file.name) || /(pdf|word|officedocument)/i.test(file.type || '');
   if (kind === 'image' && !isImage) {
     showToast('Please upload an image file here');
     return;
@@ -611,18 +638,22 @@ async function assignUploadedFileToInput(file, options = {}) {
     showToast('Please upload an image or video file');
     return;
   }
+  if (kind === 'document' && !isDocument) {
+    showToast('Please upload a PDF or DOCX file');
+    return;
+  }
   try {
     let finalUrl = '';
     if (typeof window.uploadDashboardMediaFile === 'function') {
       try {
-        finalUrl = await window.uploadDashboardMediaFile(file, { folder, kind: isVideo ? 'video' : 'image' });
+        finalUrl = await window.uploadDashboardMediaFile(file, { folder, kind: isVideo ? 'video' : isDocument ? 'document' : 'image' });
       } catch (err) {
         console.warn('Cloud upload failed:', err);
       }
     }
     if (!finalUrl) {
       if (!isImage) {
-        showToast('Video upload needs Supabase Storage. Create the community-media bucket first.');
+        showToast(kind === 'document' ? 'Document upload needs Supabase Storage. Create the community-media bucket first.' : 'Video upload needs Supabase Storage. Create the community-media bucket first.');
         return;
       }
       if (file.size > 2 * 1024 * 1024) {
@@ -632,8 +663,12 @@ async function assignUploadedFileToInput(file, options = {}) {
       finalUrl = await fileToDataUrl(file);
     }
     input.value = finalUrl;
+    if (nameInputId) {
+      const nameInput = document.getElementById(nameInputId);
+      if (nameInput) nameInput.value = file.name;
+    }
     setUploadPreview(previewId, finalUrl, `${file.name} • ${formatBytes(file.size)}`);
-    showToast(isVideo ? 'Video attached successfully' : 'Image attached successfully');
+    showToast(kind === 'document' ? 'Attachment uploaded successfully' : isVideo ? 'Video attached successfully' : 'Image attached successfully');
   } catch (err) {
     console.error(err);
     showToast(String(err.message || err));
@@ -648,6 +683,7 @@ function initUploadWidgets() {
     const fileInputId = panel.dataset.fileInput;
     const folder = panel.dataset.folder || 'general';
     const kind = panel.dataset.uploadKind || 'image';
+    const nameInputId = panel.dataset.nameTarget || '';
     const fileInput = document.getElementById(fileInputId);
     const dropzone = panel.querySelector('[data-role="dropzone"]');
     if (!fileInput || !dropzone) return;
@@ -658,7 +694,7 @@ function initUploadWidgets() {
     fileInput.addEventListener('change', async e => {
       const file = e.target.files && e.target.files[0];
       if (!file) return;
-      await assignUploadedFileToInput(file, { inputId, previewId, folder, kind });
+      await assignUploadedFileToInput(file, { inputId, previewId, folder, kind, nameInputId });
       e.target.value = '';
     });
     ['dragenter','dragover'].forEach(evt => dropzone.addEventListener(evt, e => {
@@ -672,7 +708,7 @@ function initUploadWidgets() {
     dropzone.addEventListener('drop', async e => {
       const file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
       if (!file) return;
-      await assignUploadedFileToInput(file, { inputId, previewId, folder, kind });
+      await assignUploadedFileToInput(file, { inputId, previewId, folder, kind, nameInputId });
     });
     const input = document.getElementById(inputId);
     if (input) input.addEventListener('input', () => {
@@ -887,6 +923,7 @@ function renderHome() {
       <div>
         <div><strong>${a.title}</strong> <span class="chip gold">${a.type}</span></div>
         <div class="muted">${a.member} • ${fmtDate(a.date)} • ${a.department || ''}</div>
+        ${a.attachment ? `<div class="inline-metrics" style="margin-top:6px"><a class="chip" href="${a.attachment}" target="_blank" rel="noopener">📎 ${escapeHtml(a.attachmentName || 'Attachment')}</a></div>` : ''}
       </div>
     </div>`).join('') : `<div class="empty-state">No achievements added yet.</div>`;
 
@@ -1324,6 +1361,7 @@ function renderAchievements() {
             <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><strong>${a.title}</strong><span class="chip gold">${a.type}</span></div>
             <div class="muted">${a.member} • ${fmtDate(a.date)}</div>
             <div class="muted">${a.department || ''}${a.details ? ' • ' + a.details : ''}</div>
+            ${a.attachment ? `<div class="inline-metrics" style="margin-top:8px"><a class="chip" href="${a.attachment}" target="_blank" rel="noopener">📎 ${escapeHtml(a.attachmentName || 'Attachment')}</a></div>` : ''}
             <div class="admin-actions"><button class="btn-edit" data-action="edit-achievement" data-id="${a.id}" type="button">✏️ Edit</button><button class="btn-delete" data-action="delete-achievement" data-id="${a.id}" type="button">🗑️ Delete</button></div>
           </div>
         </div>
@@ -1342,20 +1380,51 @@ function renderAchievements() {
 function openAchModal() {
   const sel = document.getElementById('achMemberSelect');
   sel.innerHTML = membersData.map(m => `<option>${m.name}</option>`).join('');
+  const form = document.getElementById('formAchieve');
+  if (form) form.reset();
+  setUploadPreview('achievementPhotoPreview', '', '');
+  setUploadPreview('achievementAttachmentPreview', '', '');
   openModal('modalAchieve');
 }
 
-document.getElementById('formAchieve').addEventListener('submit', e => {
+document.getElementById('formAchieve').addEventListener('submit', async e => {
   e.preventDefault();
   if (!adminMode()) return;
   const f = e.target;
-  const obj = { id: Date.now(), member: f.member.value, title: f.title.value, type: f.type.value, date: f.date.value, department: f.department.value, details: f.details.value, photo: f.photo.value };
+  const photoValue = String(f.photo.value || '').trim();
+  const attachmentValue = String(f.attachment.value || '').trim();
+  if (looksLikeLocalFilePath(photoValue) || looksLikeLocalFilePath(attachmentValue)) {
+    showToast('Use the upload boxes for local files. PC file paths will not work.');
+    return;
+  }
+  const obj = {
+    id: Date.now(),
+    member: f.member.value,
+    title: f.title.value.trim(),
+    type: f.type.value,
+    date: f.date.value,
+    department: f.department.value.trim(),
+    details: f.details.value.trim(),
+    photo: photoValue,
+    attachment: attachmentValue,
+    attachmentName: String(f.attachmentName.value || '').trim() || (attachmentValue ? attachmentValue.split('/').pop().split('?')[0] : '')
+  };
   achievementsData.unshift(obj);
-  store.set('utp_achievements', achievementsData);
+  persistAchievementsLocal();
+  if (typeof window.saveAchievementToCloud === 'function') {
+    try {
+      const saved = await window.saveAchievementToCloud(obj);
+      const idx = achievementsData.findIndex(x => Number(x.id) === Number(obj.id));
+      if (saved && idx >= 0) achievementsData[idx] = saved;
+      persistAchievementsLocal();
+    } catch (err) { console.warn('Cloud achievement save failed:', err); }
+  }
   closeModal('modalAchieve');
   renderAchievements();
   renderHome();
   f.reset();
+  setUploadPreview('achievementPhotoPreview', '', '');
+  setUploadPreview('achievementAttachmentPreview', '', '');
 });
 
 /* --------- GALLERY --------- */

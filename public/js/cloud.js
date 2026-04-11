@@ -13,6 +13,7 @@
     committee: 'committee_directory',
     alumni: 'alumni_directory',
     events: 'events_board',
+    achievements: 'achievements_board',
     gallery: 'gallery_items',
     admins: 'admin_accounts',
     settings: 'site_settings'
@@ -277,6 +278,9 @@
       .on('postgres_changes', { event: '*', schema: 'public', table: CONTENT_TABLES.events }, () => {
         if (typeof refreshDirectoryMediaFromCloud === 'function') refreshDirectoryMediaFromCloud(true);
       })
+      .on('postgres_changes', { event: '*', schema: 'public', table: CONTENT_TABLES.achievements }, () => {
+        if (typeof refreshDirectoryMediaFromCloud === 'function') refreshDirectoryMediaFromCloud(true);
+      })
       .on('postgres_changes', { event: '*', schema: 'public', table: CONTENT_TABLES.gallery }, () => {
         if (typeof refreshDirectoryMediaFromCloud === 'function') refreshDirectoryMediaFromCloud(true);
       })
@@ -366,12 +370,14 @@
   window.loadCommitteeFromCloud = () => loadPayloadCollection('committee');
   window.loadAlumniFromCloud = () => loadPayloadCollection('alumni');
   window.loadEventsFromCloud = () => loadPayloadCollection('events');
+  window.loadAchievementsFromCloud = () => loadPayloadCollection('achievements');
   window.loadGalleryFromCloud = () => loadPayloadCollection('gallery');
   window.loadAdminAccountsFromCloud = () => loadPayloadCollection('admins');
   window.saveMemberToCloud = item => savePayloadItem('members', item);
   window.saveCommitteeToCloud = item => savePayloadItem('committee', item);
   window.saveAlumniToCloud = item => savePayloadItem('alumni', item);
   window.saveEventToCloud = item => savePayloadItem('events', item);
+  window.saveAchievementToCloud = item => savePayloadItem('achievements', item);
   window.saveGalleryItemToCloud = item => savePayloadItem('gallery', item);
   window.saveAdminAccountsToCloud = async items => {
     if (!state.ready) return items;
@@ -383,6 +389,7 @@
   window.deleteCommitteeFromCloud = id => deletePayloadItem('committee', id);
   window.deleteAlumniFromCloud = id => deletePayloadItem('alumni', id);
   window.deleteEventFromCloud = id => deletePayloadItem('events', id);
+  window.deleteAchievementFromCloud = id => deletePayloadItem('achievements', id);
   window.deleteGalleryItemFromCloud = id => deletePayloadItem('gallery', id);
   window.uploadDashboardMediaFile = async function (file, options = {}) {
     if (!state.ready || !state.client) throw new Error('Supabase is not connected');
@@ -435,6 +442,7 @@
         { key: 'committee', label: 'committee',       items: dedupeItemsById(snapshot.committee || [], 'committee') },
         { key: 'alumni',    label: 'alumni',          items: dedupeItemsById(snapshot.alumni || [], 'alumni') },
         { key: 'events',    label: 'events',          items: dedupeItemsById(snapshot.events || [], 'events') },
+        { key: 'achievements', label: 'achievements', items: dedupeItemsById(snapshot.achievements || [], 'achievements') },
         { key: 'gallery',   label: 'gallery items',   items: dedupeItemsById(snapshot.gallery || [], 'gallery items') },
         { key: 'admins',    label: 'admin accounts',  items: dedupeItemsById(snapshot.adminAccounts || [], 'admin accounts') },
       ];
@@ -485,7 +493,7 @@
 
   window.pullContentFromCloud = async function () {
     try {
-      setContentCloudMessage('Refreshing members, committee, alumni, events, gallery, admin accounts, and shared settings from Supabase...', 'muted');
+      setContentCloudMessage('Refreshing members, committee, alumni, events, achievements, gallery, admin accounts, and shared settings from Supabase...', 'muted');
       if (typeof refreshDirectoryMediaFromCloud === 'function') await refreshDirectoryMediaFromCloud(true);
       if (typeof refreshAdminAccountsFromCloud === 'function') await refreshAdminAccountsFromCloud(false);
       if (typeof refreshSiteSettingsFromCloud === 'function') await refreshSiteSettingsFromCloud();
