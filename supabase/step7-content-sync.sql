@@ -22,6 +22,12 @@ create table if not exists public.events_board (
   updated_at timestamptz not null default now()
 );
 
+create table if not exists public.announcements_board (
+  id bigint primary key,
+  payload jsonb not null,
+  updated_at timestamptz not null default now()
+);
+
 create table if not exists public.gallery_items (
   id bigint primary key,
   payload jsonb not null,
@@ -38,6 +44,7 @@ alter table public.members_directory enable row level security;
 alter table public.committee_directory enable row level security;
 alter table public.alumni_directory enable row level security;
 alter table public.events_board enable row level security;
+alter table public.announcements_board enable row level security;
 alter table public.achievements_board enable row level security;
 alter table public.gallery_items enable row level security;
 
@@ -65,6 +72,13 @@ create policy "alumni_public_read"
 drop policy if exists "events_public_read" on public.events_board;
 create policy "events_public_read"
   on public.events_board
+  for select
+  to anon, authenticated
+  using (true);
+
+drop policy if exists "announcements_public_read" on public.announcements_board;
+create policy "announcements_public_read"
+  on public.announcements_board
   for select
   to anon, authenticated
   using (true);
@@ -97,6 +111,10 @@ exception when duplicate_object then null; end $$;
 
 do $$ begin
   alter publication supabase_realtime add table public.events_board;
+exception when duplicate_object then null; end $$;
+
+do $$ begin
+  alter publication supabase_realtime add table public.announcements_board;
 exception when duplicate_object then null; end $$;
 
 do $$ begin
