@@ -834,7 +834,7 @@ function openEditAnnouncement(id) {
   openModal('modalEditAnnouncement');
 }
 
-document.getElementById('formEditAnnouncement').addEventListener('submit', e => {
+document.getElementById('formEditAnnouncement').addEventListener('submit', async e => {
   e.preventDefault();
   if (!isAdmin || !editingAnnouncementId) return;
   const idx = announcementsData.findIndex(x => x.id === editingAnnouncementId);
@@ -847,25 +847,39 @@ document.getElementById('formEditAnnouncement').addEventListener('submit', e => 
     pinned: document.getElementById('editAnnouncementPinned').checked,
     content: document.getElementById('editAnnouncementContent').value
   };
-  store.set('utp_announcements', announcementsData);
+  persistAnnouncementsLocal();
+  if (typeof window.saveAnnouncementToCloud === 'function') {
+    try {
+      const saved = await window.saveAnnouncementToCloud(announcementsData[idx]);
+      if (saved) announcementsData[idx] = saved;
+      persistAnnouncementsLocal();
+    } catch (err) { console.warn('Cloud announcement update failed:', err); }
+  }
   closeModal('modalEditAnnouncement');
   showToast('Announcement updated');
   reRenderAll();
 });
-function deleteAnnouncement() {
+async function deleteAnnouncement() {
   if (!isAdmin || !editingAnnouncementId) return;
   if (!confirm('Delete this announcement?')) return;
+  const deleteId = editingAnnouncementId;
   announcementsData = announcementsData.filter(x => x.id !== editingAnnouncementId);
-  store.set('utp_announcements', announcementsData);
+  persistAnnouncementsLocal();
+  if (typeof window.deleteAnnouncementFromCloud === 'function') {
+    try { await window.deleteAnnouncementFromCloud(deleteId); } catch (err) { console.warn('Cloud announcement delete failed:', err); }
+  }
   closeModal('modalEditAnnouncement');
   showToast('Announcement deleted');
   reRenderAll();
 }
-function confirmDeleteAnnouncement(id) {
+async function confirmDeleteAnnouncement(id) {
   if (!isAdmin) return;
   if (!confirm('Delete this announcement?')) return;
   announcementsData = announcementsData.filter(x => x.id !== id);
-  store.set('utp_announcements', announcementsData);
+  persistAnnouncementsLocal();
+  if (typeof window.deleteAnnouncementFromCloud === 'function') {
+    try { await window.deleteAnnouncementFromCloud(id); } catch (err) { console.warn('Cloud announcement delete failed:', err); }
+  }
   showToast('Announcement deleted');
   reRenderAll();
 }
@@ -954,6 +968,65 @@ async function confirmDeleteAchievement(id) {
   reRenderAll();
 }
 
+
+/* --------- Emergency settings --------- */
+function openEmergencyContactsEditor() {
+  const contacts = (typeof window.getEmergencyContacts === 'function' ? window.getEmergencyContacts() : []).slice(0, 6);
+  const defaults = [
+    { title: 'UTP Security', phone: '+60 5-368 8999', description: '24/7 campus emergency' },
+    { title: 'Perak Police', phone: '999', description: 'Malaysia emergency' },
+    { title: 'Ambulance', phone: '999', description: 'Medical emergency' },
+    { title: 'Bangladesh High Commission KL', phone: '+60 3-4251 3555', description: 'Passport & welfare' },
+    { title: 'UTP International Office', phone: '+60 5-368 7243', description: 'Visa & student pass' },
+    { title: 'Committee Welfare', phone: '+60 14-333 4444', description: 'Community support' }
+  ];
+  for (let i = 0; i < 6; i += 1) {
+    const item = contacts[i] || defaults[i];
+    document.getElementById(`emergencyTitle${i+1}`).value = item.title || '';
+    document.getElementById(`emergencyPhone${i+1}`).value = item.phone || '';
+    document.getElementById(`emergencyDesc${i+1}`).value = item.description || '';
+  }
+  openModal('modalEmergencyContacts');
+}
+function openEmergencyLinksEditor() {
+  const links = (typeof window.getEmergencyQuickLinks === 'function' ? window.getEmergencyQuickLinks() : []).slice(0, 3);
+  const defaults = [
+    { label: 'UTP Website', url: 'https://www.utp.edu.my' },
+    { label: 'ISA Portal', url: '#' },
+    { label: 'E-Learning', url: '#' }
+  ];
+  for (let i = 0; i < 3; i += 1) {
+    const item = links[i] || defaults[i];
+    document.getElementById(`emergencyLinkLabel${i+1}`).value = item.label || '';
+    document.getElementById(`emergencyLinkUrl${i+1}`).value = item.url || '';
+  }
+  openModal('modalEmergencyLinks');
+}
+document.getElementById('formEmergencyContacts')?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  if (!isAdmin) return;
+  const items = Array.from({ length: 6 }, (_, i) => ({
+    title: document.getElementById(`emergencyTitle${i+1}`).value.trim(),
+    phone: document.getElementById(`emergencyPhone${i+1}`).value.trim(),
+    description: document.getElementById(`emergencyDesc${i+1}`).value.trim()
+  }));
+  if (typeof window.setEmergencyContacts === 'function') window.setEmergencyContacts(items);
+  closeModal('modalEmergencyContacts');
+  showToast('Emergency contacts updated');
+  reRenderAll();
+});
+document.getElementById('formEmergencyLinks')?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  if (!isAdmin) return;
+  const items = Array.from({ length: 3 }, (_, i) => ({
+    label: document.getElementById(`emergencyLinkLabel${i+1}`).value.trim(),
+    url: document.getElementById(`emergencyLinkUrl${i+1}`).value.trim()
+  }));
+  if (typeof window.setEmergencyQuickLinks === 'function') window.setEmergencyQuickLinks(items);
+  closeModal('modalEmergencyLinks');
+  showToast('Emergency quick links updated');
+  reRenderAll();
+});
 /* --------- Photo edit --------- */
 let editingPhotoId = null;
 function openEditPhoto(id) {

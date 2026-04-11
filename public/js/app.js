@@ -142,8 +142,45 @@ window.refreshSiteSettingsFromCloud = async function () {
       store.set('utp_committee_message', committeeMessage);
       changed = true;
     }
-    if (changed) { rerenderSharedContentViews(); }
+    if (Array.isArray(settings.emergency_contacts)) {
+      emergencyContactsData = settings.emergency_contacts;
+      store.set('utp_emergency_contacts', emergencyContactsData);
+      changed = true;
+    }
+    if (Array.isArray(settings.emergency_quick_links)) {
+      emergencyQuickLinksData = settings.emergency_quick_links;
+      store.set('utp_emergency_quick_links', emergencyQuickLinksData);
+      changed = true;
+    }
+    if (changed) { rerenderSharedContentViews(); renderEmergency(); }
   } catch (e) { console.warn('refreshSiteSettingsFromCloud failed:', e); }
+};
+
+window.setEmergencyContacts = function (items = [], options = {}) {
+  emergencyContactsData = (Array.isArray(items) ? items : []).map((item, index) => ({
+    title: String((item && item.title) || (defaultEmergencyContacts[index] && defaultEmergencyContacts[index].title) || '').trim(),
+    phone: String((item && item.phone) || '').trim(),
+    description: String((item && item.description) || '').trim()
+  }));
+  store.set('utp_emergency_contacts', emergencyContactsData);
+  if (options.saveSiteSetting !== false && typeof window.saveSiteSettingToCloud === 'function') {
+    window.saveSiteSettingToCloud('emergency_contacts', emergencyContactsData).catch(e => console.warn('Emergency contacts cloud save failed:', e));
+  }
+  if (options.render !== false) renderEmergency();
+  return emergencyContactsData;
+};
+
+window.setEmergencyQuickLinks = function (items = [], options = {}) {
+  emergencyQuickLinksData = (Array.isArray(items) ? items : []).map((item, index) => ({
+    label: String((item && item.label) || (defaultEmergencyQuickLinks[index] && defaultEmergencyQuickLinks[index].label) || '').trim(),
+    url: String((item && item.url) || '').trim()
+  }));
+  store.set('utp_emergency_quick_links', emergencyQuickLinksData);
+  if (options.saveSiteSetting !== false && typeof window.saveSiteSettingToCloud === 'function') {
+    window.saveSiteSettingToCloud('emergency_quick_links', emergencyQuickLinksData).catch(e => console.warn('Emergency quick links cloud save failed:', e));
+  }
+  if (options.render !== false) renderEmergency();
+  return emergencyQuickLinksData;
 };
 
 /* ===== Themes ===== */
@@ -354,6 +391,7 @@ function persistMembersLocal() { store.set('utp_members', membersData); }
 function persistCommitteeLocal() { store.set('utp_committee', committeeData); }
 function persistAlumniLocal() { store.set('utp_alumni', alumniData); }
 function persistEventsLocal() { store.set('utp_events', eventsData); }
+function persistAnnouncementsLocal() { store.set('utp_announcements', announcementsData); }
 function persistAchievementsLocal() { store.set('utp_achievements', achievementsData); }
 function persistGalleryLocal() { store.set('utp_gallery', galleryData); }
 
@@ -367,6 +405,7 @@ window.getCloudContentSnapshot = function () {
       buildSharedContentEventRow('committee_message'),
       buildSharedContentEventRow('community_links')
     ].filter(Boolean),
+    announcements: Array.isArray(announcementsData) ? announcementsData : [],
     achievements: Array.isArray(achievementsData) ? achievementsData : [],
     gallery: Array.isArray(galleryData) ? galleryData : [],
     adminAccounts: typeof window.getAdminAccountsSnapshot === 'function' ? window.getAdminAccountsSnapshot() : []
@@ -382,6 +421,7 @@ window.applyCloudContentSnapshot = function (payload = {}, forceRender = true) {
     eventsData = extracted.normalEvents;
     persistEventsLocal();
   }
+  if (Array.isArray(payload.announcements)) { announcementsData = payload.announcements; persistAnnouncementsLocal(); }
   if (Array.isArray(payload.achievements)) { achievementsData = payload.achievements; persistAchievementsLocal(); }
   if (Array.isArray(payload.gallery)) { galleryData = payload.gallery; persistGalleryLocal(); }
   if (Array.isArray(payload.adminAccounts) && typeof window.applyAdminAccountsSnapshot === 'function') {
@@ -396,6 +436,7 @@ window.applyCloudContentSnapshot = function (payload = {}, forceRender = true) {
     renderAchievements();
     renderGallery();
     renderOnboarding();
+    renderEmergency();
   }
 };
 
@@ -432,6 +473,13 @@ async function refreshDirectoryMediaFromCloud(forceRender = true) {
         persistEventsLocal();
       }
     }
+    if (typeof window.loadAnnouncementsFromCloud === 'function') {
+      const cloudAnnouncements = await window.loadAnnouncementsFromCloud();
+      if (Array.isArray(cloudAnnouncements) && (cloudAnnouncements.length || !announcementsData.length)) {
+        announcementsData = cloudAnnouncements;
+        persistAnnouncementsLocal();
+      }
+    }
     if (typeof window.loadAchievementsFromCloud === 'function') {
       const cloudAchievements = await window.loadAchievementsFromCloud();
       if (Array.isArray(cloudAchievements) && (cloudAchievements.length || !achievementsData.length)) {
@@ -466,6 +514,23 @@ const defaultPublicVisibility = { email: true, phone: true, birthday: true, inta
 let publicVisibility = store.get('utp_public_visibility', defaultPublicVisibility);
 const defaultCommunityLinks = { whatsapp: '', facebook: '', instagram: '' };
 let communityLinksData = store.get('utp_community_links', defaultCommunityLinks);
+const defaultEmergencyContacts = [
+  { title: 'UTP Security', phone: '+60 5-368 8999', description: '24/7 campus emergency' },
+  { title: 'Perak Police', phone: '999', description: 'Malaysia emergency' },
+  { title: 'Ambulance', phone: '999', description: 'Medical emergency' },
+  { title: 'Bangladesh High Commission KL', phone: '+60 3-4251 3555', description: 'Passport & welfare' },
+  { title: 'UTP International Office', phone: '+60 5-368 7243', description: 'Visa & student pass' },
+  { title: 'Committee Welfare', phone: '+60 14-333 4444', description: 'Community support' }
+];
+const defaultEmergencyQuickLinks = [
+  { label: 'UTP Website', url: 'https://www.utp.edu.my' },
+  { label: 'ISA Portal', url: '#' },
+  { label: 'E-Learning', url: '#' }
+];
+let emergencyContactsData = store.get('utp_emergency_contacts', defaultEmergencyContacts);
+let emergencyQuickLinksData = store.get('utp_emergency_quick_links', defaultEmergencyQuickLinks);
+window.getEmergencyContacts = () => (Array.isArray(emergencyContactsData) ? emergencyContactsData.map(item => ({ ...item })) : []);
+window.getEmergencyQuickLinks = () => (Array.isArray(emergencyQuickLinksData) ? emergencyQuickLinksData.map(item => ({ ...item })) : []);
 (() => {
   const extracted = extractSharedContentFromEvents(eventsData);
   if (Array.isArray(extracted.normalEvents)) {
@@ -1286,7 +1351,7 @@ function renderEvents() {
     });
   }
 
-  page.addEventListener('click', (event) => {
+  page.onclick = (event) => {
     const button = event.target.closest('button[data-action]');
     if (!button) return;
     const id = Number(button.dataset.id);
@@ -1294,7 +1359,7 @@ function renderEvents() {
     if (button.dataset.action === 'delete-event') confirmDeleteEvent(id);
     if (button.dataset.action === 'edit-announcement') openEditAnnouncement(id);
     if (button.dataset.action === 'delete-announcement') confirmDeleteAnnouncement(id);
-  });
+  };
 }
 
 document.getElementById('formEvent').addEventListener('submit', async e => {
@@ -1323,13 +1388,21 @@ document.getElementById('formEvent').addEventListener('submit', async e => {
   f.reset();
 });
 
-document.getElementById('formAnnounce').addEventListener('submit', e => {
+document.getElementById('formAnnounce').addEventListener('submit', async e => {
   e.preventDefault();
   if (!adminMode()) return;
   const f = e.target;
   const obj = { id: Date.now(), title: f.title.value.trim(), date: f.date.value, category: f.category.value, pinned: f.pinned.checked, content: f.content.value };
   announcementsData.unshift(obj);
-  store.set('utp_announcements', announcementsData);
+  persistAnnouncementsLocal();
+  if (typeof window.saveAnnouncementToCloud === 'function') {
+    try {
+      const saved = await window.saveAnnouncementToCloud(obj);
+      const idx = announcementsData.findIndex(x => Number(x.id) === Number(obj.id));
+      if (saved && idx >= 0) announcementsData[idx] = saved;
+      persistAnnouncementsLocal();
+    } catch (err) { console.warn('Cloud announcement save failed:', err); }
+  }
   closeModal('modalAnnounce');
   renderEvents();
   renderHome();
@@ -1859,31 +1932,31 @@ function renderOnboarding() {
 
 /* --------- EMERGENCY --------- */
 function renderEmergency() {
-  const welfare = committeeData.find(c => normalize(c.role).includes('welfare'));
   const page = document.getElementById('page-emergency');
+  const contacts = (Array.isArray(emergencyContactsData) && emergencyContactsData.length ? emergencyContactsData : defaultEmergencyContacts).map((item, index) => ({
+    title: String((item && item.title) || (defaultEmergencyContacts[index] && defaultEmergencyContacts[index].title) || '').trim(),
+    phone: String((item && item.phone) || '').trim(),
+    description: String((item && item.description) || '').trim()
+  }));
+  const links = (Array.isArray(emergencyQuickLinksData) && emergencyQuickLinksData.length ? emergencyQuickLinksData : defaultEmergencyQuickLinks).map((item, index) => ({
+    label: String((item && item.label) || (defaultEmergencyQuickLinks[index] && defaultEmergencyQuickLinks[index].label) || '').trim(),
+    url: String((item && item.url) || '').trim()
+  }));
   page.innerHTML = `
     <div class="page-banner"><h2>Emergency & Support Resources</h2><p>Fast access to important campus, embassy, and welfare contacts.</p></div>
+    ${adminMode() ? `<div class="card cover-card" style="margin-bottom:14px"><div class="section-title"><h2>Admin controls</h2><div class="admin-actions" style="display:flex"><button class="ghost" type="button" onclick="openEmergencyContactsEditor()">✏️ Edit contacts</button><button class="ghost" type="button" onclick="openEmergencyLinksEditor()">🔗 Edit quick links</button></div></div><div class="muted">Changes here sync to other browsers through Supabase.</div></div>` : ''}
     <div class="grid grid-3">
-      ${[
-        { t: 'UTP Security', p: '+60 5-368 8999', d: '24/7 campus emergency' },
-        { t: 'Perak Police', p: '999', d: 'Malaysia emergency' },
-        { t: 'Ambulance', p: '999', d: 'Medical emergency' },
-        { t: 'Bangladesh High Commission KL', p: '+60 3-4251 3555', d: 'Passport & welfare' },
-        { t: 'UTP International Office', p: '+60 5-368 7243', d: 'Visa & student pass' },
-        { t: 'Committee Welfare', p: welfare?.phone || '+60 14-333 4444', d: 'Community support' }
-      ].map(c => `
+      ${contacts.map(c => `
         <div class="card cover-card">
-          <div style="display:flex;justify-content:space-between;align-items:center"><strong>${c.t}</strong><a class="chip red" href="tel:${c.p.replace(/\s/g, '')}">Call</a></div>
-          <div style="font-size:22px;font-weight:800;margin:10px 0">${c.p}</div>
-          <div class="muted">${c.d}</div>
+          <div style="display:flex;justify-content:space-between;align-items:center"><strong>${escapeHtml(c.title)}</strong>${c.phone ? `<a class="chip red" href="tel:${escapeHtml(c.phone.replace(/\s/g, ''))}">Call</a>` : ''}</div>
+          <div style="font-size:22px;font-weight:800;margin:10px 0">${escapeHtml(c.phone || '—')}</div>
+          <div class="muted">${escapeHtml(c.description || '')}</div>
         </div>`).join('')}
     </div>
     <div class="card cover-card" style="margin-top:14px">
       <div class="section-title"><h2>Quick Links</h2></div>
       <div class="grid grid-3">
-        <a class="card" style="text-align:center" href="https://www.utp.edu.my" target="_blank">UTP Website</a>
-        <a class="card" style="text-align:center" href="#">ISA Portal</a>
-        <a class="card" style="text-align:center" href="#">E-Learning</a>
+        ${links.map(link => `<a class="card" style="text-align:center" href="${escapeHtml(link.url || '#')}" ${link.url && link.url !== '#' ? 'target="_blank" rel="noopener"' : ''}>${escapeHtml(link.label || 'Link')}</a>`).join('')}
       </div>
     </div>`;
 }

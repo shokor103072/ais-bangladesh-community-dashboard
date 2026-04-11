@@ -275,7 +275,7 @@
   <div class="modal-card">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
       <h3 style="margin:0">Edit Event</h3>
-      <button class="ghost" onclick="closeModal('modalEditEvent')">Close</button>
+      <button type="button" class="ghost" onclick="closeModal('modalEditEvent')">Close</button>
     </div>
     <form id="formEditEvent">
       <input type="hidden" name="id" id="editEventId">
@@ -310,7 +310,7 @@
   <div class="modal-card">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
       <h3 style="margin:0">Add Event</h3>
-      <button class="ghost" onclick="closeModal('modalEvent')">Close</button>
+      <button type="button" class="ghost" onclick="closeModal('modalEvent')">Close</button>
     </div>
     <form id="formEvent">
       <label>Title</label><input required name="title">
@@ -342,7 +342,7 @@
   <div class="modal-card">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
       <h3 style="margin:0">Add Announcement</h3>
-      <button class="ghost" onclick="closeModal('modalAnnounce')">Close</button>
+      <button type="button" class="ghost" onclick="closeModal('modalAnnounce')">Close</button>
     </div>
     <form id="formAnnounce">
       <label>Title</label><input required name="title">
@@ -540,7 +540,7 @@
   <div class="modal-card">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
       <h3 style="margin:0">Edit Announcement</h3>
-      <button class="ghost" onclick="closeModal('modalEditAnnouncement')">Close</button>
+      <button type="button" class="ghost" onclick="closeModal('modalEditAnnouncement')">Close</button>
     </div>
     <form id="formEditAnnouncement">
       <input type="hidden" name="id" id="editAnnouncementId">
@@ -633,6 +633,97 @@
         <button type="button" class="ghost" style="color:var(--red)" onclick="deletePhotoEdit()">Delete</button>
         <button type="button" class="ghost" onclick="closeModal('modalEditPhoto')">Cancel</button>
         <button class="primary" type="submit">Save Changes</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+
+<div class="modal" id="modalEmergencyContacts">
+  <div class="modal-card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <h3 style="margin:0">Edit Emergency Contacts</h3>
+      <button type="button" class="ghost" onclick="closeModal('modalEmergencyContacts')">Close</button>
+    </div>
+    <form id="formEmergencyContacts">
+      <div class="stack-list">
+        <div class="card" style="padding:12px">
+          <div class="section-kicker">Contact 1</div>
+          <label>Title</label><input id="emergencyTitle1" required>
+          <div class="grid grid-2">
+            <div><label>Phone</label><input id="emergencyPhone1"></div>
+            <div><label>Description</label><input id="emergencyDesc1"></div>
+          </div>
+        </div><div class="card" style="padding:12px">
+          <div class="section-kicker">Contact 2</div>
+          <label>Title</label><input id="emergencyTitle2" required>
+          <div class="grid grid-2">
+            <div><label>Phone</label><input id="emergencyPhone2"></div>
+            <div><label>Description</label><input id="emergencyDesc2"></div>
+          </div>
+        </div><div class="card" style="padding:12px">
+          <div class="section-kicker">Contact 3</div>
+          <label>Title</label><input id="emergencyTitle3" required>
+          <div class="grid grid-2">
+            <div><label>Phone</label><input id="emergencyPhone3"></div>
+            <div><label>Description</label><input id="emergencyDesc3"></div>
+          </div>
+        </div><div class="card" style="padding:12px">
+          <div class="section-kicker">Contact 4</div>
+          <label>Title</label><input id="emergencyTitle4" required>
+          <div class="grid grid-2">
+            <div><label>Phone</label><input id="emergencyPhone4"></div>
+            <div><label>Description</label><input id="emergencyDesc4"></div>
+          </div>
+        </div><div class="card" style="padding:12px">
+          <div class="section-kicker">Contact 5</div>
+          <label>Title</label><input id="emergencyTitle5" required>
+          <div class="grid grid-2">
+            <div><label>Phone</label><input id="emergencyPhone5"></div>
+            <div><label>Description</label><input id="emergencyDesc5"></div>
+          </div>
+        </div><div class="card" style="padding:12px">
+          <div class="section-kicker">Contact 6</div>
+          <label>Title</label><input id="emergencyTitle6" required>
+          <div class="grid grid-2">
+            <div><label>Phone</label><input id="emergencyPhone6"></div>
+            <div><label>Description</label><input id="emergencyDesc6"></div>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
+        <button type="button" class="ghost" onclick="closeModal('modalEmergencyContacts')">Cancel</button>
+        <button class="primary" type="submit">Save Contacts</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="modal" id="modalEmergencyLinks">
+  <div class="modal-card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <h3 style="margin:0">Edit Emergency Quick Links</h3>
+      <button type="button" class="ghost" onclick="closeModal('modalEmergencyLinks')">Close</button>
+    </div>
+    <form id="formEmergencyLinks">
+      <div class="stack-list">
+        <div class="card" style="padding:12px">
+          <div class="section-kicker">Quick link 1</div>
+          <label>Label</label><input id="emergencyLinkLabel1" required>
+          <label>URL</label><input id="emergencyLinkUrl1" placeholder="https://...">
+        </div><div class="card" style="padding:12px">
+          <div class="section-kicker">Quick link 2</div>
+          <label>Label</label><input id="emergencyLinkLabel2" required>
+          <label>URL</label><input id="emergencyLinkUrl2" placeholder="https://...">
+        </div><div class="card" style="padding:12px">
+          <div class="section-kicker">Quick link 3</div>
+          <label>Label</label><input id="emergencyLinkLabel3" required>
+          <label>URL</label><input id="emergencyLinkUrl3" placeholder="https://...">
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
+        <button type="button" class="ghost" onclick="closeModal('modalEmergencyLinks')">Cancel</button>
+        <button class="primary" type="submit">Save Quick Links</button>
       </div>
     </form>
   </div>

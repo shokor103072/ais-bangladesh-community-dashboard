@@ -13,6 +13,7 @@
     committee: 'committee_directory',
     alumni: 'alumni_directory',
     events: 'events_board',
+    announcements: 'announcements_board',
     achievements: 'achievements_board',
     gallery: 'gallery_items',
     admins: 'admin_accounts',
@@ -239,7 +240,7 @@
       updateBadge('Cloud sync: live via Supabase', 'success');
       updateAdminNotice('<strong>Cloud sync is ON.</strong> Public concern submissions and trackable lookups use Supabase directly. Admin full inbox should use the secure Vercel API token below.', 'success');
       updateContentCloudChip('Supabase ready', 'success');
-      setContentCloudMessage('Members, committee, alumni, events, gallery, and admin accounts can now be published to Supabase. Use “Push local content to Supabase” once after schema setup to migrate your existing browser data.', 'success');
+      setContentCloudMessage('Members, committee, alumni, events, announcements, achievements, gallery, and admin accounts can now be published to Supabase. Use “Push local content to Supabase” once after schema setup to migrate your existing browser data.', 'success');
       attachRealtime();
       updateAdminTokenUi();
       await testAdminApiToken();
@@ -276,6 +277,9 @@
         if (typeof refreshDirectoryMediaFromCloud === 'function') refreshDirectoryMediaFromCloud(true);
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: CONTENT_TABLES.events }, () => {
+        if (typeof refreshDirectoryMediaFromCloud === 'function') refreshDirectoryMediaFromCloud(true);
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: CONTENT_TABLES.announcements }, () => {
         if (typeof refreshDirectoryMediaFromCloud === 'function') refreshDirectoryMediaFromCloud(true);
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: CONTENT_TABLES.achievements }, () => {
@@ -370,6 +374,7 @@
   window.loadCommitteeFromCloud = () => loadPayloadCollection('committee');
   window.loadAlumniFromCloud = () => loadPayloadCollection('alumni');
   window.loadEventsFromCloud = () => loadPayloadCollection('events');
+  window.loadAnnouncementsFromCloud = () => loadPayloadCollection('announcements');
   window.loadAchievementsFromCloud = () => loadPayloadCollection('achievements');
   window.loadGalleryFromCloud = () => loadPayloadCollection('gallery');
   window.loadAdminAccountsFromCloud = () => loadPayloadCollection('admins');
@@ -377,6 +382,7 @@
   window.saveCommitteeToCloud = item => savePayloadItem('committee', item);
   window.saveAlumniToCloud = item => savePayloadItem('alumni', item);
   window.saveEventToCloud = item => savePayloadItem('events', item);
+  window.saveAnnouncementToCloud = item => savePayloadItem('announcements', item);
   window.saveAchievementToCloud = item => savePayloadItem('achievements', item);
   window.saveGalleryItemToCloud = item => savePayloadItem('gallery', item);
   window.saveAdminAccountsToCloud = async items => {
@@ -389,6 +395,7 @@
   window.deleteCommitteeFromCloud = id => deletePayloadItem('committee', id);
   window.deleteAlumniFromCloud = id => deletePayloadItem('alumni', id);
   window.deleteEventFromCloud = id => deletePayloadItem('events', id);
+  window.deleteAnnouncementFromCloud = id => deletePayloadItem('announcements', id);
   window.deleteAchievementFromCloud = id => deletePayloadItem('achievements', id);
   window.deleteGalleryItemFromCloud = id => deletePayloadItem('gallery', id);
   window.uploadDashboardMediaFile = async function (file, options = {}) {
@@ -442,6 +449,7 @@
         { key: 'committee', label: 'committee',       items: dedupeItemsById(snapshot.committee || [], 'committee') },
         { key: 'alumni',    label: 'alumni',          items: dedupeItemsById(snapshot.alumni || [], 'alumni') },
         { key: 'events',    label: 'events',          items: dedupeItemsById(snapshot.events || [], 'events') },
+        { key: 'announcements', label: 'announcements', items: dedupeItemsById(snapshot.announcements || [], 'announcements') },
         { key: 'achievements', label: 'achievements', items: dedupeItemsById(snapshot.achievements || [], 'achievements') },
         { key: 'gallery',   label: 'gallery items',   items: dedupeItemsById(snapshot.gallery || [], 'gallery items') },
         { key: 'admins',    label: 'admin accounts',  items: dedupeItemsById(snapshot.adminAccounts || [], 'admin accounts') },
@@ -465,12 +473,16 @@
         }
       }
 
-      // Also push site settings (community links, committee message)
+      // Also push site settings (community links, committee message, emergency content)
       try {
         const cm = typeof window.getCommitteeMessage === 'function' ? window.getCommitteeMessage() : null;
         const cl = typeof communityLinksData !== 'undefined' ? communityLinksData : null;
+        const emergencyContacts = typeof window.getEmergencyContacts === 'function' ? window.getEmergencyContacts() : null;
+        const emergencyQuickLinks = typeof window.getEmergencyQuickLinks === 'function' ? window.getEmergencyQuickLinks() : null;
         if (cm) await adminContentApi('POST', 'settings', { key: 'committee_message', value: cm });
         if (cl) await adminContentApi('POST', 'settings', { key: 'community_links', value: cl });
+        if (emergencyContacts) await adminContentApi('POST', 'settings', { key: 'emergency_contacts', value: emergencyContacts });
+        if (emergencyQuickLinks) await adminContentApi('POST', 'settings', { key: 'emergency_quick_links', value: emergencyQuickLinks });
       } catch(e) { console.warn('Settings push failed:', e); }
 
       if (errors.length) {
@@ -493,7 +505,7 @@
 
   window.pullContentFromCloud = async function () {
     try {
-      setContentCloudMessage('Refreshing members, committee, alumni, events, achievements, gallery, admin accounts, and shared settings from Supabase...', 'muted');
+      setContentCloudMessage('Refreshing members, committee, alumni, events, announcements, achievements, gallery, admin accounts, and shared settings from Supabase...', 'muted');
       if (typeof refreshDirectoryMediaFromCloud === 'function') await refreshDirectoryMediaFromCloud(true);
       if (typeof refreshAdminAccountsFromCloud === 'function') await refreshAdminAccountsFromCloud(false);
       if (typeof refreshSiteSettingsFromCloud === 'function') await refreshSiteSettingsFromCloud();
